@@ -1,0 +1,1 @@
+DROP TABLE loyalty_points;
