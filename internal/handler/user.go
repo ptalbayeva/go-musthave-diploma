@@ -141,6 +141,13 @@ func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Обновляем статус заказа на "PROCESSED"
+	err = h.loyaltyService.UpdateOrderStatus(r.Context(), orderID, "PROCESSED")
+	if err != nil {
+		http.Error(w, "Failed to update order status", http.StatusInternalServerError)
+		return
+	}
+
 	// Возвращаем успешный ответ
 	w.WriteHeader(http.StatusAccepted)
 }

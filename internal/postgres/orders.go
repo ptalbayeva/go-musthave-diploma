@@ -56,7 +56,7 @@ func (r *orderRepo) UpdateOrderPoints(ctx context.Context, orderID string, point
 }
 
 func (r *orderRepo) UpdateWithdrawalStatus(ctx context.Context, orderID string, status string) error {
-	_, err := r.db.ExecContext(ctx, "UPDATE orders SET withdrawal_status = $1 WHERE order_id = $2", status, orderID)
+	_, err := r.db.ExecContext(ctx, "UPDATE orders SET status = $1 WHERE order_id = $2", status, orderID)
 	return err
 }
 

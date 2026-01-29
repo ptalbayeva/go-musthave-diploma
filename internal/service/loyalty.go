@@ -132,11 +132,16 @@ func (s *LoyaltyService) UpdateOrderStatus(ctx context.Context, orderID string, 
 		return err
 	}
 
+	order, err := s.orderRepo.GetByOrderID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+
 	// Добавляем транзакцию
 	transaction := models.Transaction{
-		OrderID:     orderID,
-		UserID:      uuid.Nil, // Нужно передать реальный userID, если потребуется
-		Points:      0,        // Можно передать реальные баллы
+		OrderID:     order.OrderID,
+		UserID:      order.UserID,
+		Points:      order.PointsAccumulated,
 		Type:        "STATUS_UPDATE",
 		ProcessedAt: time.Now().Format(time.RFC3339),
 	}
