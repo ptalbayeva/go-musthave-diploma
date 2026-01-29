@@ -32,6 +32,7 @@ type OrdersRepository interface {
 	UpdateOrderPoints(ctx context.Context, orderID string, points int) error
 	UpdateWithdrawalStatus(ctx context.Context, orderID string, status string) error
 	GetByOrderID(ctx context.Context, orderID string) (models.Order, error)
+	OrderExists(ctx context.Context, orderID string) (bool, error)
 }
 
 type LoyaltyRepository interface {

@@ -107,6 +107,11 @@ func (s *LoyaltyService) WithdrawPoints(ctx context.Context, userID uuid.UUID, p
 	return s.loyaltyRepo.AddTransaction(ctx, userID, transaction.OrderID, transaction.Points, transaction.Type)
 }
 
+// Метод для проверки существования заказа в сервисе лояльности
+func (s *LoyaltyService) OrderExists(ctx context.Context, orderID string) (bool, error) {
+	return s.orderRepo.OrderExists(ctx, orderID)
+}
+
 // Метод для создания нового заказа и начисления баллов
 func (s *LoyaltyService) CreateOrder(ctx context.Context, userID uuid.UUID, orderID string) (string, error) {
 	// Проверяем, что номер заказа валиден (без алгоритма Луна)
@@ -114,7 +119,6 @@ func (s *LoyaltyService) CreateOrder(ctx context.Context, userID uuid.UUID, orde
 		return "", errors.New("invalid order number")
 	}
 
-	// Создаем новый заказ
 	orderStatus := "NEW"
 	_, err := s.orderRepo.CreateOrder(ctx, userID, orderID, orderStatus)
 	if err != nil {

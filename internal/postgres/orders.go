@@ -76,3 +76,17 @@ func (r *orderRepo) GetByOrderID(ctx context.Context, orderID string) (models.Or
 	}
 	return order, nil
 }
+
+// Метод для проверки существования заказа с таким order_id
+func (r *orderRepo) OrderExists(ctx context.Context, orderID string) (bool, error) {
+	// Переменная для хранения количества заказов с таким order_id
+	var count int
+
+	// Выполняем запрос в базу данных, чтобы узнать, сколько записей с таким order_id существует
+	err := r.db.QueryRowContext(ctx, "SELECT COUNT(*) FROM orders WHERE order_id = $1", orderID).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	return count > 0, nil
+}

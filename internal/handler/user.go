@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
@@ -127,6 +128,18 @@ func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Проверяем уникальность order_id
+	orderExists, err := h.loyaltyService.OrderExists(r.Context(), orderID)
+	if err != nil {
+		http.Error(w, "Failed to check order existence", http.StatusInternalServerError)
+		return
+	}
+
+	if orderExists {
+		http.Error(w, "Order with this order_id already exists", http.StatusOK)
+		return
+	}
+
 	// Создаем заказ
 	_, err = h.loyaltyService.CreateOrder(r.Context(), userID, orderID)
 	if err != nil {
@@ -177,6 +190,7 @@ func (h *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	type response struct {
 		Number     string `json:"number"`
 		Status     string `json:"status"`
+		Accural    int    `json:"accural"`
 		UploadedAt string `json:"uploaded_at"`
 	}
 
@@ -186,6 +200,7 @@ func (h *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		responses = append(responses, &response{
 			Number:     order.OrderID,
 			Status:     order.Status,
+			Accural:    order.PointsAccumulated,
 			UploadedAt: order.CreatedAt,
 		})
 
@@ -215,19 +230,50 @@ func (h *UserHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 
 // Проверка на валидность номера заказа
 func isValidOrderID(orderID string) bool {
-	orderID = strings.TrimSpace(orderID)
-	if len(orderID) < 1 {
+	// Убираем все пробелы из строки
+	orderID = strings.ReplaceAll(orderID, " ", "")
+
+	// Если номер заказа слишком короткий или содержит нецифровые символы, сразу возвращаем false
+	if len(orderID) < 1 || len(orderID) > 15 {
 		return false
 	}
-	for _, char := range orderID {
-		if char < '0' || char > '9' {
+
+	// Проверяем, что все символы - цифры
+	for _, ch := range orderID {
+		if ch < '0' || ch > '9' {
 			return false
 		}
 	}
-	if len(orderID) < 5 || len(orderID) > 15 {
-		return false
+
+	// Применяем алгоритм Луна
+	sum := 0
+	shouldDouble := false
+
+	// Идем с конца строки и применяем Луну
+	for i := len(orderID) - 1; i >= 0; i-- {
+		digit, err := strconv.Atoi(string(orderID[i]))
+		if err != nil {
+			return false
+		}
+
+		// Если нужно удвоить цифру
+		if shouldDouble {
+			digit *= 2
+			// Если удвоенное число больше 9, складываем его цифры
+			if digit > 9 {
+				digit = digit - 9
+			}
+		}
+
+		// Добавляем цифру в сумму
+		sum += digit
+
+		// Чередуем удвоение
+		shouldDouble = !shouldDouble
 	}
-	return true
+
+	// Если сумма делится на 10, то номер корректен
+	return sum%10 == 0
 }
 
 // WithdrawPoints - вывод баллов с аккаунта пользователя
