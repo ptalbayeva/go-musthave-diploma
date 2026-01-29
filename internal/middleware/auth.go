@@ -2,52 +2,74 @@ package middleware
 
 import (
 	"context"
-	"fmt"
-
-	"github.com/dgrijalva/jwt-go"
-
 	"net/http"
 	"strings"
+
+	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 )
 
-var (
-	secretKey = "secret"
-)
+type AuthMiddleware struct {
+	SecretKey string
+}
 
-func AuthMiddleware(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Извлекаем токен из заголовка Authorization
-		authHeader := r.Header.Get("Authorization")
-		if authHeader == "" {
-			http.Error(w, "Authorization header missing", http.StatusUnauthorized)
-			return
+func NewAuthMiddleware(secretKey string) *AuthMiddleware {
+	return &AuthMiddleware{
+		SecretKey: secretKey,
+	}
+}
+
+func (m *AuthMiddleware) Authorize(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Попытка извлечь токен из cookie
+		cookie, err := r.Cookie("auth_token")
+		if err != nil || cookie.Value == "" {
+			authorizationHeader := r.Header.Get("Authorization")
+			if authorizationHeader == "" {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			parts := strings.Fields(authorizationHeader)
+			if len(parts) != 2 || parts[0] != "Bearer" {
+				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				return
+			}
+
+			cookie = &http.Cookie{Value: parts[1]}
 		}
 
-		// Ожидаем формат Authorization: Bearer <token>
-		tokenString := strings.Split(authHeader, " ")[1]
-
-		// Парсим токен
-		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
-			// Проверяем метод подписи
-			if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-				return nil, fmt.Errorf("unexpected signing method %v", token.Header["alg"])
-			}
-			return []byte(secretKey), nil
+		// Извлечение и валидация JWT токена
+		tokenStr := cookie.Value
+		claims := &jwt.MapClaims{}
+		_, err = jwt.ParseWithClaims(tokenStr, claims, func(token *jwt.Token) (interface{}, error) {
+			return []byte(m.SecretKey), nil
 		})
 
 		if err != nil {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 		}
 
-		// Проверяем, что токен валиден
-		if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-			userID := claims["user_id"].(string)
-			// Сохраняем userID в контексте запроса для дальнейшего использования
-			ctx := context.WithValue(r.Context(), "userID", userID)
-			next.ServeHTTP(w, r.WithContext(ctx))
-		} else {
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+		// Извлекаем user_id из токена
+		userIDStr, ok := (*claims)["user_id"].(string)
+		if !ok {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
 		}
-	})
+
+		// Парсим user_id в UUID
+		userID, err := uuid.Parse(userIDStr)
+		if err != nil {
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Добавляем user_id в контекст запроса
+		ctx := r.Context()
+		ctx = context.WithValue(ctx, "user_id", userID)
+
+		// Передаем управление дальше
+		next.ServeHTTP(w, r.WithContext(ctx))
+	}
 }

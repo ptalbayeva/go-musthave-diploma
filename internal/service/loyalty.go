@@ -3,23 +3,27 @@ package service
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/models"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/repository"
 )
 
+// Логика для работы с лояльностью
 type LoyaltyService struct {
 	loyaltyRepo repository.LoyaltyRepository
 	orderRepo   repository.OrdersRepository
 }
 
+// Конструктор для сервиса лояльности
 func NewLoyaltyService(loyaltyRepo repository.LoyaltyRepository, orderRepo repository.OrdersRepository) *LoyaltyService {
 	return &LoyaltyService{loyaltyRepo: loyaltyRepo, orderRepo: orderRepo}
 }
 
+// Получить баланс пользователя
 func (s *LoyaltyService) GetBalance(ctx context.Context, userID uuid.UUID) (int, error) {
-	// Получаем баланс лояльности пользователя
 	balance, err := s.loyaltyRepo.GetBalance(ctx, userID)
 	if err != nil {
 		return 0, err
@@ -27,8 +31,8 @@ func (s *LoyaltyService) GetBalance(ctx context.Context, userID uuid.UUID) (int,
 	return balance, nil
 }
 
+// Получить историю выводов средств
 func (s *LoyaltyService) GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error) {
-	// Получаем историю выводов средств
 	withdrawals, err := s.loyaltyRepo.GetWithdrawals(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -36,45 +40,131 @@ func (s *LoyaltyService) GetWithdrawals(ctx context.Context, userID uuid.UUID) (
 	return withdrawals, nil
 }
 
-func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderID string, points int) error {
-	// Обновляем заказ с начисленными баллами
-	if err := s.orderRepo.UpdateOrderPoints(ctx, orderID, points); err != nil {
-		return err
-	}
-
-	// Добавляем баллы на счет пользователя
-	if err := s.loyaltyRepo.AddPoints(ctx, userID, points); err != nil {
-		return err
-	}
-
-	// Добавляем транзакцию начисления баллов
-	return s.loyaltyRepo.AddTransaction(ctx, userID, orderID, points, "ACCRUAL")
-}
-
-func (s *LoyaltyService) WithdrawPoints(ctx context.Context, userID uuid.UUID, points int) error {
-	// Получаем текущий баланс пользователя
-	balance, err := s.loyaltyRepo.GetBalance(ctx, userID)
-	if err != nil {
-		return err
-	}
-
-	if balance < points {
-		return errors.New("insufficient balance")
-	}
-
-	if err := s.loyaltyRepo.SubtractPoints(ctx, userID, points); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// GetOrders - получение всех заказов пользователя
+// Получить все заказы пользователя
 func (s *LoyaltyService) GetOrders(ctx context.Context, userID uuid.UUID) ([]models.Order, error) {
-	// Запрашиваем заказы из репозитория
 	orders, err := s.orderRepo.GetOrdersByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
 	}
 	return orders, nil
+}
+
+// Метод для добавления баллов за заказ
+func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderID string, points int) error {
+	// Проверяем, существует ли заказ
+	order, err := s.orderRepo.GetByOrderID(ctx, orderID)
+	if err != nil {
+		return err
+	}
+
+	// Если заказ уже был обработан (статус != NEW), то не начисляем баллы
+	if order.Status != "NEW" {
+		return errors.New("order already processed or in an invalid state")
+	}
+
+	// Обновляем баллы в заказе
+	if err := s.orderRepo.UpdateOrderPoints(ctx, orderID, points); err != nil {
+		return err
+	}
+
+	// Добавляем баллы пользователю
+	if err := s.loyaltyRepo.AddPoints(ctx, userID, points); err != nil {
+		return err
+	}
+
+	// Добавляем транзакцию начисления
+	return s.loyaltyRepo.AddTransaction(ctx, userID, orderID, points, "ACCRUAL")
+}
+
+// Метод для списания баллов
+func (s *LoyaltyService) WithdrawPoints(ctx context.Context, userID uuid.UUID, points int) error {
+	// Получаем текущий баланс
+	balance, err := s.loyaltyRepo.GetBalance(ctx, userID)
+	if err != nil {
+		return err
+	}
+
+	// Проверяем, достаточно ли баллов
+	if balance < points {
+		return errors.New("insufficient balance")
+	}
+
+	// Вычитаем баллы из баланса пользователя
+	if err := s.loyaltyRepo.SubtractPoints(ctx, userID, points); err != nil {
+		return err
+	}
+
+	// Добавляем транзакцию вывода средств
+	transaction := models.Transaction{
+		OrderID:     "withdrawal", // Используем специальный идентификатор для вывода
+		UserID:      userID,
+		Points:      -points, // Баллы будут отрицательными для вывода
+		Type:        "WITHDRAWAL",
+		ProcessedAt: time.Now().Format(time.RFC3339),
+	}
+
+	// Записываем транзакцию
+	return s.loyaltyRepo.AddTransaction(ctx, userID, transaction.OrderID, transaction.Points, transaction.Type)
+}
+
+// Метод для создания нового заказа и начисления баллов
+func (s *LoyaltyService) CreateOrder(ctx context.Context, userID uuid.UUID, orderID string) (string, error) {
+	// Проверяем, что номер заказа валиден (без алгоритма Луна)
+	if !isValidOrderID(orderID) {
+		return "", errors.New("invalid order number")
+	}
+
+	// Создаем новый заказ
+	orderStatus := "NEW"
+	_, err := s.orderRepo.CreateOrder(ctx, userID, orderID, orderStatus)
+	if err != nil {
+		return "", err
+	}
+
+	// Возвращаем статус
+	return "ORDER_CREATED", nil
+}
+
+// Метод для обновления статуса заказа
+func (s *LoyaltyService) UpdateOrderStatus(ctx context.Context, orderID string, status string) error {
+	// Обновляем статус заказа
+	if err := s.orderRepo.UpdateWithdrawalStatus(ctx, orderID, status); err != nil {
+		return err
+	}
+
+	// Добавляем транзакцию
+	transaction := models.Transaction{
+		OrderID:     orderID,
+		UserID:      uuid.Nil, // Нужно передать реальный userID, если потребуется
+		Points:      0,        // Можно передать реальные баллы
+		Type:        "STATUS_UPDATE",
+		ProcessedAt: time.Now().Format(time.RFC3339),
+	}
+
+	// Записываем транзакцию
+	return s.loyaltyRepo.AddTransaction(ctx, transaction.UserID, transaction.OrderID, transaction.Points, transaction.Type)
+}
+
+// Простая валидация для номера заказа
+func isValidOrderID(orderID string) bool {
+	// Убираем все пробелы и проверяем, что строка не пустая
+	orderID = strings.ReplaceAll(orderID, " ", "")
+	if len(orderID) < 1 {
+		return false
+	}
+
+	// Проверяем, что строка состоит только из цифр
+	for _, char := range orderID {
+		if char < '0' || char > '9' {
+			return false
+		}
+	}
+
+	// Дополнительные проверки, например, длина
+	if len(orderID) < 5 || len(orderID) > 15 {
+		return false
+	}
+
+	// Если все проверки пройдены, номер заказа считается валидным
+	return true
 }

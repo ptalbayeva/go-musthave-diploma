@@ -42,10 +42,9 @@ func main() {
 	authService := service.NewAuthService(repos.Users, config.SecretKey)
 	loyaltyService := service.NewLoyaltyService(repos.Loyalty, repos.Orders)
 
-	userHandler := handler.NewUserHandler(authService, loyaltyService)
+	userHandler := handler.NewUserHandler(authService, loyaltyService, config.SecretKey)
 
 	r := chi.NewRouter()
-	//r.Use(middleware.AuthMiddleware)
 
 	r.Post("/api/user/register", userHandler.Register)
 	r.Post("/api/user/login", userHandler.Login)

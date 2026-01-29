@@ -2,9 +2,17 @@ package repository
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/models"
+)
+
+var (
+	ErrOrderExistsUser  = errors.New("order already exists for this user")
+	ErrOrderExistsOther = errors.New("order already exists for another user")
+	ErrNotFound         = errors.New("order not found")
+	ErrConflict         = errors.New("login already exists")
 )
 
 type Repositories struct {
@@ -20,10 +28,10 @@ type UsersRepository interface {
 
 type OrdersRepository interface {
 	CreateOrder(ctx context.Context, userID uuid.UUID, orderID string, status string) (uuid.UUID, error)
-	GetByOrderID(ctx context.Context, orderID string) (models.Order, error)
+	GetOrdersByUserID(ctx context.Context, userID uuid.UUID) ([]models.Order, error)
 	UpdateOrderPoints(ctx context.Context, orderID string, points int) error
 	UpdateWithdrawalStatus(ctx context.Context, orderID string, status string) error
-	GetOrdersByUserID(ctx context.Context, userID uuid.UUID) ([]models.Order, error)
+	GetByOrderID(ctx context.Context, orderID string) (models.Order, error)
 }
 
 type LoyaltyRepository interface {
