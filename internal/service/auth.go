@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"fmt"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -65,7 +64,6 @@ func (s *AuthService) generateToken(userID uuid.UUID) (string, error) {
 		"user_id": userID.String(),
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	}
-	fmt.Println("secretKservtey", s.SecretKey)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(s.SecretKey))
 }

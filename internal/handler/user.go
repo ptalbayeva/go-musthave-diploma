@@ -3,6 +3,7 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"strings"
 
@@ -109,35 +110,38 @@ func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var request struct {
-		OrderID string `json:"order_id"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+	// Чтение тела запроса как строки
+	orderIDBytes, err := io.ReadAll(r.Body)
+	if err != nil {
+		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
 		return
 	}
+	orderID := string(orderIDBytes)
+
+	// Убираем возможные лишние пробелы в orderID
+	orderID = strings.TrimSpace(orderID)
 
 	// Проверяем, что номер заказа валиден
-	if !isValidOrderID(request.OrderID) {
+	if !isValidOrderID(orderID) {
 		http.Error(w, "Invalid order number", http.StatusUnprocessableEntity)
 		return
 	}
 
 	// Создаем заказ
-	_, err := h.loyaltyService.CreateOrder(r.Context(), userID, request.OrderID)
+	_, err = h.loyaltyService.CreateOrder(r.Context(), userID, orderID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	// Пример начисления баллов (можно передавать количество баллов в запросе)
-	err = h.loyaltyService.AddPoints(r.Context(), userID, request.OrderID, 1)
+	// Пример начисления баллов
+	err = h.loyaltyService.AddPoints(r.Context(), userID, orderID, 1)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	// Возвращаем успешный ответ
 	w.WriteHeader(http.StatusAccepted)
 }
 
