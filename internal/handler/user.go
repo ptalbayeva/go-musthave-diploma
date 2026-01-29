@@ -174,8 +174,24 @@ func (h *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	type response struct {
+		Number     string `json:"number"`
+		Status     string `json:"status"`
+		UploadedAt string `json:"uploaded_at"`
+	}
+
+	responses := make([]*response, 0, len(orders))
+
+	for _, order := range orders {
+		responses = append(responses, &response{
+			Number:     order.OrderID,
+			Status:     order.Status,
+			UploadedAt: order.CreatedAt,
+		})
+
+	}
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(orders)
+	json.NewEncoder(w).Encode(responses)
 }
 
 // GetBalance - получение баланса пользователя
