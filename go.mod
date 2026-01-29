@@ -1,6 +1,6 @@
 module github.com/ptalbayeva/go-musthave-diploma
 
-go 1.25.1
+go 1.24.12
 
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
