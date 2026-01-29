@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/google/uuid"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/models"
@@ -63,7 +64,13 @@ func (r *orderRepo) GetByOrderID(ctx context.Context, orderID string) (models.Or
 	var order models.Order
 	err := r.db.QueryRowContext(
 		ctx,
-		"SELECT id, user_id, order_id, status, points_accumulated, withdrawal_status, created_at FROM orders WHERE order_id = $1", orderID).Scan(&order.ID, &order.UserID, &order.OrderID, &order.Status, &order.PointsAccumulated, &order.WithdrawalStatus, &order.CreatedAt)
+		"SELECT id, user_id, order_id, status, points_accumulated, withdrawal_status, created_at FROM orders WHERE order_id = $1", orderID).
+		Scan(&order.ID, &order.UserID, &order.OrderID, &order.Status, &order.PointsAccumulated, &order.WithdrawalStatus, &order.CreatedAt)
+
+	if errors.Is(err, sql.ErrNoRows) {
+		return models.Order{}, nil
+	}
+
 	if err != nil {
 		return models.Order{}, err
 	}

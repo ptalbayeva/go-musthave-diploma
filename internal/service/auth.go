@@ -3,11 +3,13 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
+	"time"
+
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/repository"
 	"golang.org/x/crypto/bcrypt"
-	"time"
 )
 
 type AuthService struct {
@@ -21,8 +23,6 @@ func NewAuthService(usersRepo repository.UsersRepository, secretKey string) *Aut
 		SecretKey: secretKey,
 	}
 }
-
-var ErrConflict = errors.New("login already exists")
 
 func (s *AuthService) RegisterUser(ctx context.Context, email, password string) (uuid.UUID, error) {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
@@ -65,6 +65,7 @@ func (s *AuthService) generateToken(userID uuid.UUID) (string, error) {
 		"user_id": userID.String(),
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),
 	}
+	fmt.Println("secretKservtey", s.SecretKey)
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString([]byte(s.SecretKey))
 }

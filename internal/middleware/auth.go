@@ -19,8 +19,8 @@ func NewAuthMiddleware(secretKey string) *AuthMiddleware {
 	}
 }
 
-func (m *AuthMiddleware) Authorize(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
+func (m *AuthMiddleware) Authorize(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		// Попытка извлечь токен из cookie
 		cookie, err := r.Cookie("auth_token")
 		if err != nil || cookie.Value == "" {
@@ -71,5 +71,5 @@ func (m *AuthMiddleware) Authorize(next http.HandlerFunc) http.HandlerFunc {
 
 		// Передаем управление дальше
 		next.ServeHTTP(w, r.WithContext(ctx))
-	}
+	})
 }

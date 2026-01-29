@@ -13,6 +13,7 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/config"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/handler"
+	"github.com/ptalbayeva/go-musthave-diploma/internal/middleware"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/postgres"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/repository"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/service"
@@ -41,6 +42,7 @@ func main() {
 
 	authService := service.NewAuthService(repos.Users, config.SecretKey)
 	loyaltyService := service.NewLoyaltyService(repos.Loyalty, repos.Orders)
+	authMiddleware := middleware.NewAuthMiddleware(config.SecretKey)
 
 	userHandler := handler.NewUserHandler(authService, loyaltyService, config.SecretKey)
 
@@ -48,11 +50,15 @@ func main() {
 
 	r.Post("/api/user/register", userHandler.Register)
 	r.Post("/api/user/login", userHandler.Login)
-	r.Post("/api/user/orders", userHandler.CreateOrder)
-	r.Get("/api/user/orders", userHandler.GetOrders)
-	r.Get("/api/user/balance", userHandler.GetBalance)
-	r.Post("/api/user/balance/withdraw", userHandler.WithdrawPoints)
-	r.Get("/api/user/balance/withdrawals", userHandler.GetWithdrawals)
+	r.Group(func(r chi.Router) {
+		r.Use(authMiddleware.Authorize)
+
+		r.Post("/api/user/orders", userHandler.CreateOrder)
+		r.Get("/api/user/orders", userHandler.GetOrders)
+		r.Get("/api/user/balance", userHandler.GetBalance)
+		r.Post("/api/user/balance/withdraw", userHandler.WithdrawPoints)
+		r.Get("/api/user/balance/withdrawals", userHandler.GetWithdrawals)
+	})
 
 	fmt.Println("Сервер запущен на", config.RunAddress)
 	if fail := http.ListenAndServe(config.RunAddress, r); fail != nil {

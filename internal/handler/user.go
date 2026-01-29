@@ -124,14 +124,21 @@ func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Пример начисления баллов (можно передавать количество баллов в запросе)
-	err := h.loyaltyService.AddPoints(r.Context(), userID, request.OrderID, 100) // можно заменить на динамичное вычисление баллов
+	// Создаем заказ
+	_, err := h.loyaltyService.CreateOrder(r.Context(), userID, request.OrderID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	w.WriteHeader(http.StatusCreated)
+	// Пример начисления баллов (можно передавать количество баллов в запросе)
+	err = h.loyaltyService.AddPoints(r.Context(), userID, request.OrderID, 1)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusAccepted)
 }
 
 // GetOrders - получение списка заказов пользователя
