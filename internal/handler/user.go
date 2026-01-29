@@ -160,6 +160,8 @@ func (h *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+
 	if len(orders) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
