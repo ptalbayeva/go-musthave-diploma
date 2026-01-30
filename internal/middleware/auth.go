@@ -9,6 +9,10 @@ import (
 	"github.com/google/uuid"
 )
 
+type contextKey string
+
+const userIDContextKey contextKey = "user_id"
+
 type AuthMiddleware struct {
 	SecretKey string
 }
@@ -67,9 +71,14 @@ func (m *AuthMiddleware) Authorize(next http.Handler) http.Handler {
 
 		// Добавляем user_id в контекст запроса
 		ctx := r.Context()
-		ctx = context.WithValue(ctx, "user_id", userID)
+		ctx = context.WithValue(ctx, userIDContextKey, userID)
 
 		// Передаем управление дальше
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
+	id, ok := ctx.Value(userIDContextKey).(uuid.UUID)
+	return id, ok
 }
