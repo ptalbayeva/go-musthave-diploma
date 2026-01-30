@@ -44,6 +44,8 @@ func (c *Client) GetOrder(orderNum string) (*OrderResponse, int, int, error) {
 		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
 			return nil, resp.StatusCode, 0, err
 		}
+
+		fmt.Println(&res)
 		return &res, resp.StatusCode, 0, nil
 
 	case http.StatusNoContent:

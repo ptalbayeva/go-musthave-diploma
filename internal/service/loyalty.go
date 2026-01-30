@@ -57,11 +57,7 @@ func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderI
 		return err
 	}
 
-	if order.Status != "NEW" {
-		return errors.New("order already processed or in an invalid state")
-	}
-
-	if err := s.orderRepo.UpdateOrderPoints(ctx, orderID, points); err != nil {
+	if err := s.orderRepo.UpdateOrderPoints(ctx, order.OrderID, points); err != nil {
 		return err
 	}
 
@@ -69,7 +65,7 @@ func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderI
 		return err
 	}
 
-	return s.loyaltyRepo.AddTransaction(ctx, userID, orderID, points, "ACCRUAL")
+	return s.loyaltyRepo.AddTransaction(ctx, userID, order.OrderID, points, "ACCRUAL")
 }
 
 // Метод для списания баллов

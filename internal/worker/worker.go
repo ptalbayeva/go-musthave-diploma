@@ -48,6 +48,9 @@ func AwaitOrderProcessed(
 				continue
 			}
 
+			fmt.Println(res.Order)
+			fmt.Println(res.Status)
+			fmt.Println(res.Accrual)
 			switch res.Status {
 			case "REGISTERED", "PROCESSING":
 				continue
