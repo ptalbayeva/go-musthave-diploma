@@ -17,24 +17,17 @@ func NewLoyaltyRepository(db *sql.DB) repository.LoyaltyRepository {
 	return &loyaltyRepo{db: db}
 }
 
-// Получить баланс пользователя
+// GetBalance Получить баланс пользователя
 func (r *loyaltyRepo) GetBalance(ctx context.Context, userID uuid.UUID) (float32, error) {
-	var accrual float32
-	err := r.db.QueryRowContext(ctx, `
-		SELECT COALESCE(SUM(points), 0)
-		FROM transactions
-		WHERE user_id=$1 AND type='ACCRUAL'
-	`).Scan(&accrual)
+	var balance float32
+	err := r.db.QueryRowContext(ctx, "SELECT balance FROM loyalty_points WHERE user_id = $1", userID).Scan(&balance)
 	if err != nil {
+		if err == sql.ErrNoRows {
+			return 0, nil
+		}
 		return 0, err
 	}
-
-	withdrawn, err := r.GetWithdrawn(ctx, userID)
-	if err != nil {
-		return 0, err
-	}
-
-	return accrual - withdrawn, nil
+	return balance, nil
 }
 
 // Добавить баллы пользователю
