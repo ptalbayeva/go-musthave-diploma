@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/models"
@@ -28,7 +27,7 @@ func NewLoyaltyService(loyaltyRepo repository.LoyaltyRepository, orderRepo repos
 
 // GetUserBalance Получить баланс пользователя
 func (s *LoyaltyService) GetUserBalance(ctx context.Context, userID uuid.UUID) (current float32, withdrawn float32, err error) {
-	current, err = s.loyaltyRepo.GetBalance(ctx, userID)
+	current, err = s.loyaltyRepo.GetCurrent(ctx, userID)
 	if err != nil {
 		return
 	}
@@ -66,9 +65,9 @@ func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderI
 		return err
 	}
 
-	if err := s.loyaltyRepo.AddPoints(ctx, userID, points); err != nil {
-		return err
-	}
+	//if err := s.loyaltyRepo.AddPoints(ctx, userID, points); err != nil {
+	//	return err
+	//}
 
 	return s.loyaltyRepo.AddTransaction(ctx, userID, order.OrderID, points, "ACCRUAL")
 }
@@ -123,20 +122,22 @@ func (s *LoyaltyService) UpdateOrderStatus(ctx context.Context, orderID string, 
 		return err
 	}
 
-	order, err := s.orderRepo.GetByOrderID(ctx, orderID)
+	_, err := s.orderRepo.GetByOrderID(ctx, orderID)
 	if err != nil {
 		return err
 	}
+	//
+	//// Добавляем транзакцию
+	//transaction := models.Transaction{
+	//	OrderID:     order.OrderID,
+	//	UserID:      order.UserID,
+	//	Points:      order.PointsAccumulated,
+	//	Type:        "STATUS_UPDATE",
+	//	ProcessedAt: time.Now().Format(time.RFC3339),
+	//}
+	//
+	//// Записываем транзакцию
+	//return s.loyaltyRepo.AddTransaction(ctx, transaction.UserID, transaction.OrderID, transaction.Points, transaction.Type)
 
-	// Добавляем транзакцию
-	transaction := models.Transaction{
-		OrderID:     order.OrderID,
-		UserID:      order.UserID,
-		Points:      order.PointsAccumulated,
-		Type:        "STATUS_UPDATE",
-		ProcessedAt: time.Now().Format(time.RFC3339),
-	}
-
-	// Записываем транзакцию
-	return s.loyaltyRepo.AddTransaction(ctx, transaction.UserID, transaction.OrderID, transaction.Points, transaction.Type)
+	return nil
 }
