@@ -19,15 +19,22 @@ func NewLoyaltyRepository(db *sql.DB) repository.LoyaltyRepository {
 
 // Получить баланс пользователя
 func (r *loyaltyRepo) GetBalance(ctx context.Context, userID uuid.UUID) (float32, error) {
-	var balance float32
-	err := r.db.QueryRowContext(ctx, "SELECT balance FROM loyalty_points WHERE user_id = $1", userID).Scan(&balance)
+	var accrual float32
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(points), 0)
+		FROM transactions
+		WHERE user_id=$1 AND type='ACCRUAL'
+	`).Scan(&accrual)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, nil // Нет записей для пользователя, баланс = 0
-		}
 		return 0, err
 	}
-	return balance, nil
+
+	withdrawn, err := r.GetWithdrawn(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	return accrual - withdrawn, nil
 }
 
 // Добавить баллы пользователю
@@ -37,7 +44,7 @@ func (r *loyaltyRepo) AddPoints(ctx context.Context, userID uuid.UUID, points fl
 	return err
 }
 
-// Вычесть баллы у пользователя
+// SubtractPoints Вычесть баллы у пользователя
 func (r *loyaltyRepo) SubtractPoints(ctx context.Context, userID uuid.UUID, points float32) error {
 	// Проверка, если записи нет — ошибка
 	_, err := r.db.ExecContext(ctx, "UPDATE loyalty_points SET balance = balance - $1 WHERE user_id = $2 AND balance >= $1", points, userID)
@@ -47,17 +54,19 @@ func (r *loyaltyRepo) SubtractPoints(ctx context.Context, userID uuid.UUID, poin
 	return nil
 }
 
-// Добавить транзакцию
-func (r *loyaltyRepo) AddTransaction(ctx context.Context, userID uuid.UUID, orderID string, points float32, transactionType string) error {
-	// Генерация уникального ID транзакции
-	transactionID := uuid.New()
+// AddTransaction  Добавить транзакцию
+func (r *loyaltyRepo) AddTransaction(
+	ctx context.Context,
+	userID uuid.UUID,
+	orderID string,
+	points float32,
+	txType string,
+) error {
+	_, err := r.db.ExecContext(ctx, `
+		INSERT INTO transactions (user_id, order_id, points, type, processed_at)
+		VALUES ($1, $2, $3, $4, NOW())
+	`, userID, orderID, points, txType)
 
-	// Вставка транзакции в базу данных
-	_, err := r.db.ExecContext(
-		ctx,
-		"INSERT INTO transactions (id, user_id, order_id, points, type, processed_at) VALUES ($1, $2, $3, $4, $5, NOW())",
-		transactionID, userID, orderID, points, transactionType,
-	)
 	return err
 }
 

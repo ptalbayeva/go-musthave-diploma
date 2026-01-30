@@ -69,34 +69,29 @@ func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderI
 }
 
 // Метод для списания баллов
-func (s *LoyaltyService) WithdrawPoints(ctx context.Context, userID uuid.UUID, points float32) error {
-	// Получаем текущий баланс
-	balance, err := s.loyaltyRepo.GetBalance(ctx, userID)
+func (s *LoyaltyService) WithdrawPoints(
+	ctx context.Context,
+	userID uuid.UUID,
+	orderID string,
+	points float32,
+) error {
+
+	current, err := s.loyaltyRepo.GetBalance(ctx, userID)
 	if err != nil {
 		return err
 	}
 
-	// Проверяем, достаточно ли баллов
-	if balance < points {
+	if current < points {
 		return errors.New("insufficient balance")
 	}
 
-	// Вычитаем баллы из баланса пользователя
-	if err := s.loyaltyRepo.SubtractPoints(ctx, userID, points); err != nil {
-		return err
-	}
-
-	// Добавляем транзакцию вывода средств
-	transaction := models.Transaction{
-		OrderID:     "withdrawal", // Используем специальный идентификатор для вывода
-		UserID:      userID,
-		Points:      -points, // Баллы будут отрицательными для вывода
-		Type:        "WITHDRAWAL",
-		ProcessedAt: time.Now().Format(time.RFC3339),
-	}
-
-	// Записываем транзакцию
-	return s.loyaltyRepo.AddTransaction(ctx, userID, transaction.OrderID, transaction.Points, transaction.Type)
+	return s.loyaltyRepo.AddTransaction(
+		ctx,
+		userID,
+		orderID,
+		points,
+		"WITHDRAWAL",
+	)
 }
 
 // OrderExists Метод для проверки существования заказа в сервисе лояльности
