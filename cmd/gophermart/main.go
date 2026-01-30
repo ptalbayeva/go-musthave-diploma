@@ -59,7 +59,7 @@ func main() {
 		r.Get("/api/user/orders", userHandler.GetOrders)
 		r.Get("/api/user/balance", userHandler.GetBalance)
 		r.Post("/api/user/balance/withdraw", userHandler.WithdrawPoints)
-		r.Get("/api/user/balance/withdrawals", userHandler.GetWithdrawals)
+		r.Get("/api/user/withdrawals", userHandler.GetWithdrawals)
 	})
 
 	fmt.Println("Сервер запущен на", config.RunAddress)
