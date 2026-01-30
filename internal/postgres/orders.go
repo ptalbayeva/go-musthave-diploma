@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
 
 	"github.com/google/uuid"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/models"
@@ -51,6 +52,8 @@ func (r *orderRepo) GetOrdersByUserID(ctx context.Context, userID uuid.UUID) ([]
 }
 
 func (r *orderRepo) UpdateOrderPoints(ctx context.Context, orderID string, points int) error {
+	log.Println("orderId", orderID)
+	log.Println("points", points)
 	_, err := r.db.ExecContext(ctx, "UPDATE orders SET points_accumulated = $1 WHERE order_id = $2", points, orderID)
 	return err
 }

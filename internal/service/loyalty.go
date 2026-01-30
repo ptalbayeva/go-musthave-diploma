@@ -57,22 +57,18 @@ func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderI
 		return err
 	}
 
-	// Если заказ уже был обработан (статус != NEW), то не начисляем баллы
 	if order.Status != "NEW" {
 		return errors.New("order already processed or in an invalid state")
 	}
 
-	// Обновляем баллы в заказе
 	if err := s.orderRepo.UpdateOrderPoints(ctx, orderID, points); err != nil {
 		return err
 	}
 
-	// Добавляем баллы пользователю
 	if err := s.loyaltyRepo.AddPoints(ctx, userID, points); err != nil {
 		return err
 	}
 
-	// Добавляем транзакцию начисления
 	return s.loyaltyRepo.AddTransaction(ctx, userID, orderID, points, "ACCRUAL")
 }
 
