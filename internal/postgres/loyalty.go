@@ -63,7 +63,11 @@ func (r *loyaltyRepo) AddTransaction(ctx context.Context, userID uuid.UUID, orde
 
 func (r *loyaltyRepo) GetWithdrawn(ctx context.Context, userID uuid.UUID) (float32, error) {
 	var withdrawn float32
-	err := r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(points),0) FROM transactions WHERE user_id=$1`, userID).Scan(&withdrawn)
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(points),0)
+		FROM transactions
+		WHERE user_id=$1 AND type='WITHDRAWAL'
+	`, userID).Scan(&withdrawn)
 	return withdrawn, err
 }
 
