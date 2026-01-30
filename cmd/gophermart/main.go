@@ -11,6 +11,7 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	database "github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/ptalbayeva/go-musthave-diploma/internal/client"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/config"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/handler"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/middleware"
@@ -44,7 +45,8 @@ func main() {
 	loyaltyService := service.NewLoyaltyService(repos.Loyalty, repos.Orders)
 	authMiddleware := middleware.NewAuthMiddleware(config.SecretKey)
 
-	userHandler := handler.NewUserHandler(authService, loyaltyService, config.SecretKey)
+	accrualClient := client.NewClient(config.AccrualSystemAddress)
+	userHandler := handler.NewUserHandler(authService, loyaltyService, config.SecretKey, accrualClient)
 
 	r := chi.NewRouter()
 

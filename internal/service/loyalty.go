@@ -3,7 +3,7 @@ package service
 import (
 	"context"
 	"errors"
-	"strings"
+	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -114,7 +114,6 @@ func (s *LoyaltyService) OrderExists(ctx context.Context, orderID string) (bool,
 
 // Метод для создания нового заказа и начисления баллов
 func (s *LoyaltyService) CreateOrder(ctx context.Context, userID uuid.UUID, orderID string) (string, error) {
-	// Проверяем, что номер заказа валиден (без алгоритма Луна)
 	if !isValidOrderID(orderID) {
 		return "", errors.New("invalid order number")
 	}
@@ -156,24 +155,32 @@ func (s *LoyaltyService) UpdateOrderStatus(ctx context.Context, orderID string, 
 
 // Простая валидация для номера заказа
 func isValidOrderID(orderID string) bool {
-	// Убираем все пробелы и проверяем, что строка не пустая
-	orderID = strings.ReplaceAll(orderID, " ", "")
+	orderID = orderID[:len(orderID)-1] + orderID[len(orderID)-1:]
+
 	if len(orderID) < 1 {
 		return false
 	}
 
-	// Проверяем, что строка состоит только из цифр
-	for _, char := range orderID {
-		if char < '0' || char > '9' {
+	reversed := ""
+	for i := len(orderID) - 1; i >= 0; i-- {
+		reversed += string(orderID[i])
+	}
+
+	sum := 0
+	for i, char := range reversed {
+		num, err := strconv.Atoi(string(char))
+		if err != nil {
 			return false
 		}
+
+		if i%2 != 0 {
+			num *= 2
+			if num > 9 {
+				num = num - 9
+			}
+		}
+		sum += num
 	}
 
-	// Дополнительные проверки, например, длина
-	if len(orderID) < 5 || len(orderID) > 15 {
-		return false
-	}
-
-	// Если все проверки пройдены, номер заказа считается валидным
-	return true
+	return sum%10 == 0
 }

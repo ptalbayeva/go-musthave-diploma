@@ -3,15 +3,16 @@ package handler
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
-	"strconv"
-	"strings"
 
 	"github.com/google/uuid"
+	"github.com/ptalbayeva/go-musthave-diploma/internal/client"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/middleware"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/repository"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/service"
+	"github.com/ptalbayeva/go-musthave-diploma/internal/worker"
 )
 
 type UserHandler struct {
@@ -19,15 +20,17 @@ type UserHandler struct {
 	loyaltyService *service.LoyaltyService
 	secretKey      string
 	authMiddleware *middleware.AuthMiddleware
+	accrualClient  *client.Client
 }
 
-func NewUserHandler(authService *service.AuthService, loyaltyService *service.LoyaltyService, secretKey string) *UserHandler {
+func NewUserHandler(authService *service.AuthService, loyaltyService *service.LoyaltyService, secretKey string, accrualClient *client.Client) *UserHandler {
 	authMiddleware := middleware.NewAuthMiddleware(secretKey)
 	return &UserHandler{
 		authService:    authService,
 		loyaltyService: loyaltyService,
 		secretKey:      secretKey,
 		authMiddleware: authMiddleware,
+		accrualClient:  accrualClient,
 	}
 }
 
@@ -119,15 +122,6 @@ func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 	orderID := string(orderIDBytes)
 
-	// Убираем возможные лишние пробелы в orderID
-	orderID = strings.TrimSpace(orderID)
-
-	// Проверяем, что номер заказа валиден
-	if !isValidOrderID(orderID) {
-		http.Error(w, "Invalid order number", http.StatusUnprocessableEntity)
-		return
-	}
-
 	// Проверяем уникальность order_id
 	orderExists, err := h.loyaltyService.OrderExists(r.Context(), orderID)
 	if err != nil {
@@ -161,7 +155,23 @@ func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Возвращаем успешный ответ
+	orderResp, err := h.accrualClient.RegisterOrder(orderID)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("error registering order %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	if orderResp.Accrual != nil {
+		expectedAccrual := *orderResp.Accrual
+		go func() {
+			if err := worker.AwaitOrderProcessed(orderID, int(expectedAccrual), h.accrualClient); err != nil {
+				fmt.Println("error while awaiting:", err)
+			}
+		}()
+	} else {
+		fmt.Println("no accrual")
+	}
+
 	w.WriteHeader(http.StatusAccepted)
 }
 
@@ -226,54 +236,6 @@ func (h *UserHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(map[string]int{"balance": balance})
-}
-
-// Проверка на валидность номера заказа
-func isValidOrderID(orderID string) bool {
-	// Убираем все пробелы из строки
-	orderID = strings.ReplaceAll(orderID, " ", "")
-
-	// Если номер заказа слишком короткий или содержит нецифровые символы, сразу возвращаем false
-	if len(orderID) < 1 || len(orderID) > 15 {
-		return false
-	}
-
-	// Проверяем, что все символы - цифры
-	for _, ch := range orderID {
-		if ch < '0' || ch > '9' {
-			return false
-		}
-	}
-
-	// Применяем алгоритм Луна
-	sum := 0
-	shouldDouble := false
-
-	// Идем с конца строки и применяем Луну
-	for i := len(orderID) - 1; i >= 0; i-- {
-		digit, err := strconv.Atoi(string(orderID[i]))
-		if err != nil {
-			return false
-		}
-
-		// Если нужно удвоить цифру
-		if shouldDouble {
-			digit *= 2
-			// Если удвоенное число больше 9, складываем его цифры
-			if digit > 9 {
-				digit = digit - 9
-			}
-		}
-
-		// Добавляем цифру в сумму
-		sum += digit
-
-		// Чередуем удвоение
-		shouldDouble = !shouldDouble
-	}
-
-	// Если сумма делится на 10, то номер корректен
-	return sum%10 == 0
 }
 
 // WithdrawPoints - вывод баллов с аккаунта пользователя

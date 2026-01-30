@@ -17,7 +17,7 @@ func NewConfig() (*Config, error) {
 	var (
 		runAddress           = flag.String("a", ":8080", "Адрес и порт для запуска сервиса")
 		databaseURI          = flag.String("d", "postgres://my_superuser:strongpassword@localhost:5432/gophermart?sslmode=disable", "Адрес подключения к базе данных")
-		accrualSystemAddress = flag.String("r", ":8081", "Адрес системы расчёта начислений")
+		accrualSystemAddress = flag.String("r", "http://localhost:8081", "Адрес системы расчёта начислений")
 		secretKey            = flag.String("s", "secretkey", "Secret key")
 	)
 

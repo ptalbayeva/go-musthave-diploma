@@ -12,7 +12,9 @@ require (
 )
 
 require (
+	github.com/go-resty/resty/v2 v2.17.1 // indirect
 	github.com/lib/pq v1.11.1 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/net v0.48.0 // indirect
 )
