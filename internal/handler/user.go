@@ -115,7 +115,7 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	userID, ok := ctx.Value("user_id").(uuid.UUID)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -171,7 +171,7 @@ func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 
 // GetOrders - получение списка заказов пользователя
 func (h *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("user_id").(uuid.UUID)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -221,7 +221,7 @@ func (h *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 
 // GetBalance - получение баланса пользователя
 func (h *UserHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	userID, ok := r.Context().Value("user_id").(uuid.UUID)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -296,7 +296,7 @@ func (h *UserHandler) WithdrawPoints(w http.ResponseWriter, r *http.Request) {
 func (h *UserHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	userID, ok := middleware.UserIDFromContext(r.Context())
+	userID, ok := ctx.Value("user_id").(uuid.UUID)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return

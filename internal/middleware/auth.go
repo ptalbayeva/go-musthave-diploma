@@ -77,8 +77,3 @@ func (m *AuthMiddleware) Authorize(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
-
-func UserIDFromContext(ctx context.Context) (uuid.UUID, bool) {
-	id, ok := ctx.Value(userIDContextKey).(uuid.UUID)
-	return id, ok
-}
