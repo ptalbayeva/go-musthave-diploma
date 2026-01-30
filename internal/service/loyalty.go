@@ -81,7 +81,7 @@ func (s *LoyaltyService) WithdrawPoints(
 	points float32,
 ) error {
 
-	current, err := s.loyaltyRepo.GetBalance(ctx, userID)
+	current, err := s.loyaltyRepo.GetCurrent(ctx, userID)
 	if err != nil {
 		return err
 	}

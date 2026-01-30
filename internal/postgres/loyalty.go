@@ -102,3 +102,23 @@ func (r *loyaltyRepo) GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]m
 
 	return transactions, nil
 }
+
+func (r *loyaltyRepo) GetCurrent(ctx context.Context, userID uuid.UUID) (float32, error) {
+	var current float32
+	err := r.db.QueryRowContext(ctx, `
+		SELECT COALESCE(SUM(points),0)
+		FROM transactions
+		WHERE user_id=$1 AND type='ACCRUAL'
+	`, userID).Scan(&current)
+	if err != nil {
+		return 0, err
+	}
+
+	// Вычитаем списанные баллы
+	withdrawn, err := r.GetWithdrawn(ctx, userID)
+	if err != nil {
+		return 0, err
+	}
+
+	return current - withdrawn, nil
+}

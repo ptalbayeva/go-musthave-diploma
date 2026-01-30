@@ -42,4 +42,5 @@ type LoyaltyRepository interface {
 	AddTransaction(ctx context.Context, userID uuid.UUID, orderID string, points float32, transactionType string) error
 	GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error)
 	GetWithdrawn(ctx context.Context, userID uuid.UUID) (float32, error)
+	GetCurrent(ctx context.Context, userID uuid.UUID) (float32, error)
 }
