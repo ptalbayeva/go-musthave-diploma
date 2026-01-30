@@ -67,9 +67,14 @@ func (r *loyaltyRepo) GetWithdrawn(ctx context.Context, userID uuid.UUID) (int, 
 	return withdrawn, err
 }
 
-// Получить все транзакции вывода средств
+// GetWithdrawals Получить все транзакции вывода средств
 func (r *loyaltyRepo) GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error) {
-	rows, err := r.db.QueryContext(ctx, "SELECT id, order_id, user_id, points, type, processed_at FROM transactions WHERE user_id = $1 AND type = 'WITHDRAWAL'", userID)
+	rows, err := r.db.QueryContext(ctx, `
+        SELECT id, order_id, user_id, points, type, processed_at
+        FROM transactions
+        WHERE user_id = $1 AND type = 'WITHDRAWAL'
+        ORDER BY processed_at DESC
+    `, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -78,7 +83,8 @@ func (r *loyaltyRepo) GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]m
 	var transactions []models.Transaction
 	for rows.Next() {
 		var transaction models.Transaction
-		if err := rows.Scan(&transaction.ID, &transaction.OrderID, &transaction.UserID, &transaction.Points, &transaction.Type, &transaction.ProcessedAt); err != nil {
+		if err := rows.Scan(&transaction.ID, &transaction.OrderID, &transaction.UserID,
+			&transaction.Points, &transaction.Type, &transaction.ProcessedAt); err != nil {
 			return nil, err
 		}
 		transactions = append(transactions, transaction)

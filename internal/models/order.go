@@ -1,6 +1,8 @@
 package models
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -11,5 +13,5 @@ type Order struct {
 	Status            string    `json:"status"`
 	PointsAccumulated int       `json:"points_accumulated"`
 	WithdrawalStatus  string    `json:"withdrawal_status"`
-	CreatedAt         string    `json:"created_at"`
+	CreatedAt         time.Time `json:"created_at"`
 }

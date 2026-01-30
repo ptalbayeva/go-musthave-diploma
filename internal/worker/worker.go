@@ -17,16 +17,16 @@ func AwaitOrderProcessed(
 	accrual *client.Client,
 	loyalty *service.LoyaltyService,
 ) {
-	ticker := time.NewTicker(2 * time.Second)
+	ticker := time.NewTicker(1 * time.Second) // чаще опрашиваем
 	defer ticker.Stop()
 
 	for {
 		select {
 		case <-ctx.Done():
+			fmt.Println("Context done, exiting worker")
 			return
 		case <-ticker.C:
 			res, statusCode, retryAfter, err := accrual.GetOrder(orderID)
-			fmt.Println(res)
 			if err != nil {
 				fmt.Println("Error fetching order:", err)
 				continue
@@ -36,41 +36,35 @@ func AwaitOrderProcessed(
 			case 204:
 				fmt.Println("Order not registered:", orderID)
 				return
-
 			case 429:
-				wait := 60 // по умолчанию 60 секунд
+				wait := 60
 				if retryAfter > 0 {
 					wait = retryAfter
 				}
-				fmt.Printf("Rate limit exceeded, waiting %d seconds\n", wait)
 				time.Sleep(time.Duration(wait) * time.Second)
 				continue
-
 			case 500:
-				fmt.Println("Server error for order:", orderID)
+				fmt.Println("Server error, retrying:", orderID)
 				continue
 			}
 
 			switch res.Status {
-			case "PROCESSING":
+			case "REGISTERED", "PROCESSING":
 				continue
-
 			case "INVALID":
 				_ = loyalty.UpdateOrderStatus(ctx, orderID, "INVALID")
 				return
-
 			case "PROCESSED":
-				if res.Accrual == nil {
-					_ = loyalty.UpdateOrderStatus(ctx, orderID, "PROCESSED")
-					return
+				points := 0
+				if res.Accrual != nil {
+					points = int(*res.Accrual)
 				}
 
 				_ = loyalty.UpdateOrderStatus(ctx, orderID, "PROCESSED")
-				_ = loyalty.AddPoints(ctx, userID, orderID, int(*res.Accrual))
+				if points > 0 {
+					_ = loyalty.AddPoints(ctx, userID, orderID, points)
+				}
 				return
-
-			case "REGISTERED":
-				continue
 			}
 		}
 	}

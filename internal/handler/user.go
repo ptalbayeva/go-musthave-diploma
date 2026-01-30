@@ -6,8 +6,10 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/client"
@@ -169,7 +171,6 @@ func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 
 // GetOrders - получение списка заказов пользователя
 func (h *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
-	// Используем middleware для авторизации
 	userID, ok := r.Context().Value("user_id").(uuid.UUID)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
@@ -178,35 +179,43 @@ func (h *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 
 	orders, err := h.loyaltyService.GetOrders(r.Context(), userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
-
-	w.Header().Set("Content-Type", "application/json")
 
 	if len(orders) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
+	// Сортируем заказы по дате создания: новые сначала
+	sort.SliceStable(orders, func(i, j int) bool {
+		return orders[i].CreatedAt.After(orders[j].CreatedAt)
+	})
+
 	type response struct {
 		Number     string `json:"number"`
 		Status     string `json:"status"`
-		Accural    int    `json:"accural"`
+		Accrual    *int   `json:"accrual,omitempty"`
 		UploadedAt string `json:"uploaded_at"`
 	}
 
 	responses := make([]*response, 0, len(orders))
-
 	for _, order := range orders {
+		var accrual *int
+		if order.PointsAccumulated > 0 {
+			accrual = &order.PointsAccumulated
+		}
+
 		responses = append(responses, &response{
 			Number:     order.OrderID,
 			Status:     order.Status,
-			Accural:    order.PointsAccumulated,
-			UploadedAt: order.CreatedAt,
+			Accrual:    accrual,
+			UploadedAt: order.CreatedAt.Format(time.RFC3339),
 		})
-
 	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	json.NewEncoder(w).Encode(responses)
 }
@@ -265,24 +274,35 @@ func (h *UserHandler) WithdrawPoints(w http.ResponseWriter, r *http.Request) {
 
 // GetWithdrawals - получение истории выводов баллов пользователя
 func (h *UserHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {
-	// Используем middleware для авторизации
-	userID, ok := r.Context().Value("user_id").(uuid.UUID)
+	ctx := r.Context()
+
+	userID, ok := ctx.Value("user_id").(uuid.UUID)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	withdrawals, err := h.loyaltyService.GetWithdrawals(r.Context(), userID)
+	transactions, err := h.loyaltyService.GetWithdrawals(ctx, userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
 
-	if len(withdrawals) == 0 {
+	if len(transactions) == 0 {
 		w.WriteHeader(http.StatusNoContent)
 		return
 	}
 
+	resp := make([]map[string]interface{}, 0, len(transactions))
+	for _, t := range transactions {
+		resp = append(resp, map[string]interface{}{
+			"order":        t.OrderID,
+			"sum":          t.Points,
+			"processed_at": t.ProcessedAt,
+		})
+	}
+
+	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(withdrawals)
+	json.NewEncoder(w).Encode(resp)
 }
