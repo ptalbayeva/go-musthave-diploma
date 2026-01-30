@@ -10,6 +10,11 @@ import (
 	"github.com/ptalbayeva/go-musthave-diploma/internal/repository"
 )
 
+var (
+	ErrInsufficientBalance = errors.New("insufficient balance")
+	ErrOrderAlreadyUsed    = errors.New("order already used")
+)
+
 // Логика для работы с лояльностью
 type LoyaltyService struct {
 	loyaltyRepo repository.LoyaltyRepository
@@ -68,7 +73,7 @@ func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderI
 	return s.loyaltyRepo.AddTransaction(ctx, userID, order.OrderID, points, "ACCRUAL")
 }
 
-// Метод для списания баллов
+// WithdrawPoints Метод для списания баллов
 func (s *LoyaltyService) WithdrawPoints(
 	ctx context.Context,
 	userID uuid.UUID,
@@ -82,7 +87,7 @@ func (s *LoyaltyService) WithdrawPoints(
 	}
 
 	if current < points {
-		return errors.New("insufficient balance")
+		return ErrInsufficientBalance
 	}
 
 	return s.loyaltyRepo.AddTransaction(

@@ -40,26 +40,27 @@ func (h *LoyaltyHandler) AddPoints(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]string{"status": "points added"})
 }
 
-// WithdrawPoints обработка списания баллов
-func (h *LoyaltyHandler) WithdrawPoints(w http.ResponseWriter, r *http.Request) {
-	var request struct {
-		UserID uuid.UUID `json:"user_id"`
-		Points float32   `json:"points"`
-	}
+//// WithdrawPoints обработка списания баллов
+//func (h *LoyaltyHandler) WithdrawPoints(w http.ResponseWriter, r *http.Request) {
+//	var request struct {
+//		UserID uuid.UUID `json:"user_id"`
+//		Points float32   `json:"points"`
+//	}
+//
+//	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+//		http.Error(w, "Invalid request body", http.StatusBadRequest)
+//		return
+//	}
+//
 
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if err := h.loyaltyService.WithdrawPoints(r.Context(), request.UserID, request.Points); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]string{"status": "points withdrawn"})
-}
+//	if err := h.loyaltyService.WithdrawPoints(r.Context(), request.UserID, request.Points); err != nil {
+//		http.Error(w, err.Error(), http.StatusInternalServerError)
+//		return
+//	}
+//
+//	w.WriteHeader(http.StatusOK)
+//	json.NewEncoder(w).Encode(map[string]string{"status": "points withdrawn"})
+//}
 
 //
 //// GetBalance получить баланс пользователя

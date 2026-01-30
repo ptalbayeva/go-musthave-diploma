@@ -253,20 +253,41 @@ func (h *UserHandler) WithdrawPoints(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var request struct {
-		Points float32 `json:"points"`
+	var req struct {
+		Order string  `json:"order"`
+		Sum   float32 `json:"sum"`
 	}
 
-	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
 		return
 	}
 
-	// Выводим баллы
-	err := h.loyaltyService.WithdrawPoints(r.Context(), userID, request.Points)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	orderNum, err := strconv.Atoi(req.Order)
+	if err != nil || !luhn.Valid(orderNum) {
+		http.Error(w, "Invalid order number", http.StatusUnprocessableEntity)
 		return
+	}
+
+	err = h.loyaltyService.WithdrawPoints(
+		r.Context(),
+		userID,
+		req.Order,
+		req.Sum,
+	)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, service.ErrInsufficientBalance):
+			http.Error(w, "Insufficient balance", http.StatusPaymentRequired)
+			return
+		case errors.Is(err, service.ErrOrderAlreadyUsed):
+			http.Error(w, "Order already used", http.StatusConflict)
+			return
+		default:
+			http.Error(w, "Internal error", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	w.WriteHeader(http.StatusOK)
