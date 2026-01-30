@@ -61,6 +61,12 @@ func (r *loyaltyRepo) AddTransaction(ctx context.Context, userID uuid.UUID, orde
 	return err
 }
 
+func (r *loyaltyRepo) GetWithdrawn(ctx context.Context, userID uuid.UUID) (int, error) {
+	var withdrawn int
+	err := r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(points),0) FROM transactions WHERE user_id=$1`, userID).Scan(&withdrawn)
+	return withdrawn, err
+}
+
 // Получить все транзакции вывода средств
 func (r *loyaltyRepo) GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error) {
 	rows, err := r.db.QueryContext(ctx, "SELECT id, order_id, user_id, points, type, processed_at FROM transactions WHERE user_id = $1 AND type = 'WITHDRAWAL'", userID)

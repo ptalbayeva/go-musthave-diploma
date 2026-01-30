@@ -61,23 +61,24 @@ func (h *LoyaltyHandler) WithdrawPoints(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(map[string]string{"status": "points withdrawn"})
 }
 
-// GetBalance получить баланс пользователя
-func (h *LoyaltyHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
-	userIDStr := r.URL.Query().Get("user_id")
-	userID, err := uuid.Parse(userIDStr)
-	if err != nil {
-		http.Error(w, "Invalid user_id", http.StatusBadRequest)
-		return
-	}
-
-	balance, err := h.loyaltyService.GetBalance(r.Context(), userID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	json.NewEncoder(w).Encode(map[string]int{"balance": balance})
-}
+//
+//// GetBalance получить баланс пользователя
+//func (h *LoyaltyHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
+//	userIDStr := r.URL.Query().Get("user_id")
+//	userID, err := uuid.Parse(userIDStr)
+//	if err != nil {
+//		http.Error(w, "Invalid user_id", http.StatusBadRequest)
+//		return
+//	}
+//
+//	balance, err := h.loyaltyService.GetUserBalance(r.Context(), userID)
+//	if err != nil {
+//		http.Error(w, err.Error(), http.StatusInternalServerError)
+//		return
+//	}
+//
+//	json.NewEncoder(w).Encode(map[string]int{"balance": balance})
+//}
 
 // GetWithdrawals получить историю выводов баллов пользователя
 func (h *LoyaltyHandler) GetWithdrawals(w http.ResponseWriter, r *http.Request) {

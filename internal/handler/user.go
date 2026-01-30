@@ -213,26 +213,31 @@ func (h *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 
 // GetBalance - получение баланса пользователя
 func (h *UserHandler) GetBalance(w http.ResponseWriter, r *http.Request) {
-	// Используем middleware для авторизации
 	userID, ok := r.Context().Value("user_id").(uuid.UUID)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	balance, err := h.loyaltyService.GetBalance(r.Context(), userID)
+	balance, withdrawn, err := h.loyaltyService.GetUserBalance(r.Context(), userID)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	w.Header().Set("Content-Type", "application/json")
+
+	resp := map[string]interface{}{
+		"current":   balance,
+		"withdrawn": withdrawn,
+	}
+
 	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(map[string]int{"balance": balance})
+	json.NewEncoder(w).Encode(resp)
 }
 
 // WithdrawPoints - вывод баллов с аккаунта пользователя
 func (h *UserHandler) WithdrawPoints(w http.ResponseWriter, r *http.Request) {
-	// Используем middleware для авторизации
 	userID, ok := r.Context().Value("user_id").(uuid.UUID)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)

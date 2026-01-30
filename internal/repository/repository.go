@@ -40,5 +40,6 @@ type LoyaltyRepository interface {
 	AddPoints(ctx context.Context, userID uuid.UUID, points int) error
 	SubtractPoints(ctx context.Context, userID uuid.UUID, points int) error
 	AddTransaction(ctx context.Context, userID uuid.UUID, orderID string, points int, transactionType string) error
-	GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error) // Получение всех выводов
+	GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error)
+	GetWithdrawn(ctx context.Context, userID uuid.UUID) (int, error)
 }

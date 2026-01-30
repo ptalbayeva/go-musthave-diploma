@@ -21,13 +21,14 @@ func NewLoyaltyService(loyaltyRepo repository.LoyaltyRepository, orderRepo repos
 	return &LoyaltyService{loyaltyRepo: loyaltyRepo, orderRepo: orderRepo}
 }
 
-// Получить баланс пользователя
-func (s *LoyaltyService) GetBalance(ctx context.Context, userID uuid.UUID) (int, error) {
-	balance, err := s.loyaltyRepo.GetBalance(ctx, userID)
+// GetUserBalance Получить баланс пользователя
+func (s *LoyaltyService) GetUserBalance(ctx context.Context, userID uuid.UUID) (current int, withdrawn int, err error) {
+	current, err = s.loyaltyRepo.GetBalance(ctx, userID)
 	if err != nil {
-		return 0, err
+		return
 	}
-	return balance, nil
+	withdrawn, err = s.loyaltyRepo.GetWithdrawn(ctx, userID)
+	return
 }
 
 // Получить историю выводов средств
