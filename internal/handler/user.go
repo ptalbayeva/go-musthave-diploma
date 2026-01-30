@@ -1,11 +1,13 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 
 	"github.com/google/uuid"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/client"
@@ -13,6 +15,7 @@ import (
 	"github.com/ptalbayeva/go-musthave-diploma/internal/repository"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/service"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/worker"
+	"github.com/theplant/luhn"
 )
 
 type UserHandler struct {
@@ -108,69 +111,60 @@ func (h *UserHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 // CreateOrder - создание нового заказа и начисление баллов
 func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
-	userID, ok := r.Context().Value("user_id").(uuid.UUID)
+	ctx := r.Context()
+
+	userID, ok := ctx.Value("user_id").(uuid.UUID)
 	if !ok {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
 
-	// Чтение тела запроса как строки
-	orderIDBytes, err := io.ReadAll(r.Body)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		http.Error(w, "Failed to read request body", http.StatusInternalServerError)
+		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	orderID := string(orderIDBytes)
+	order := string(body)
+	orderID, err := strconv.Atoi(order)
 
-	// Проверяем уникальность order_id
-	orderExists, err := h.loyaltyService.OrderExists(r.Context(), orderID)
+	if !luhn.Valid(orderID) {
+		http.Error(w, "invalid order number", http.StatusUnprocessableEntity)
+		return
+	}
+
+	exists, ownerID, err := h.loyaltyService.OrderExists(ctx, order)
 	if err != nil {
-		http.Error(w, "Failed to check order existence", http.StatusInternalServerError)
+		http.Error(w, "internal error", http.StatusInternalServerError)
 		return
 	}
 
-	if orderExists {
-		http.Error(w, "Order with this order_id already exists", http.StatusOK)
+	if exists {
+		if ownerID == userID {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
+		http.Error(w, "order belongs to another user", http.StatusConflict)
 		return
 	}
 
-	// Создаем заказ
-	_, err = h.loyaltyService.CreateOrder(r.Context(), userID, orderID)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := h.loyaltyService.CreateOrder(ctx, userID, order); err != nil {
+		http.Error(w, "failed to create order", http.StatusInternalServerError)
 		return
 	}
 
-	// Пример начисления баллов
-	err = h.loyaltyService.AddPoints(r.Context(), userID, orderID, 1)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	if err := h.accrualClient.RegisterOrder(order); err != nil {
+		fmt.Println(err)
+		http.Error(w, "failed to register order in accrual", http.StatusInternalServerError)
 		return
 	}
 
-	// Обновляем статус заказа на "PROCESSED"
-	err = h.loyaltyService.UpdateOrderStatus(r.Context(), orderID, "PROCESSED")
-	if err != nil {
-		http.Error(w, "Failed to update order status", http.StatusInternalServerError)
-		return
-	}
-
-	orderResp, err := h.accrualClient.RegisterOrder(orderID)
-	if err != nil {
-		http.Error(w, fmt.Sprintf("error registering order %v", err), http.StatusInternalServerError)
-		return
-	}
-
-	if orderResp.Accrual != nil {
-		expectedAccrual := *orderResp.Accrual
-		go func() {
-			if err := worker.AwaitOrderProcessed(orderID, int(expectedAccrual), h.accrualClient); err != nil {
-				fmt.Println("error while awaiting:", err)
-			}
-		}()
-	} else {
-		fmt.Println("no accrual")
-	}
+	go worker.AwaitOrderProcessed(
+		context.Background(),
+		order,
+		userID,
+		h.accrualClient,
+		h.loyaltyService,
+	)
 
 	w.WriteHeader(http.StatusAccepted)
 }

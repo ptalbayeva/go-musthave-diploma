@@ -1,70 +1,69 @@
 package client
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
+	"time"
 )
 
-// OrderResponse представляет структуру ответа от API после регистрации заказа
 type OrderResponse struct {
 	Order   string   `json:"order"`
 	Status  string   `json:"status"`
 	Accrual *float64 `json:"accrual,omitempty"`
 }
 
-// Client представляет собой экземпляр клиента для общения с API
 type Client struct {
-	HttpClient *http.Client
-	BaseURL    string
+	BaseURL string
+	Client  *http.Client
 }
 
-// NewClient создает новый экземпляр клиента
 func NewClient(baseURL string) *Client {
 	return &Client{
-		HttpClient: &http.Client{},
-		BaseURL:    baseURL,
+		BaseURL: baseURL,
+		Client: &http.Client{
+			Timeout: 5 * time.Second,
+		},
 	}
 }
 
-// RegisterOrder регистрирует новый номер заказа через API
-func (c *Client) RegisterOrder(orderNum string) (*OrderResponse, error) {
+// RegisterOrder Регистрация заказа в accrual
+func (c *Client) RegisterOrder(orderNum string) error {
 	url := fmt.Sprintf("%s/api/orders/%s", c.BaseURL, orderNum)
 
-	reqBody := []byte(orderNum)
-
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(reqBody))
+	req, err := http.NewRequest(http.MethodPost, url, nil)
 	if err != nil {
-		return nil, fmt.Errorf("error creating request: %v", err)
+		return err
 	}
 
-	req.Header.Set("Content-Type", "text/plain")
-
-	resp, err := c.HttpClient.Do(req)
+	resp, err := c.Client.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("error while processing order: %v", err)
+		return err
 	}
 	defer resp.Body.Close()
 
-	respBody, err := io.ReadAll(resp.Body)
+	switch resp.StatusCode {
+	case http.StatusOK, http.StatusAccepted, http.StatusConflict:
+		return nil
+	default:
+		return fmt.Errorf("accrual register error: %s", resp.Status)
+	}
+}
+
+// GetOrder Получение статуса заказа
+func (c *Client) GetOrder(orderNum string) (*OrderResponse, error) {
+	url := fmt.Sprintf("%s/api/orders/%s", c.BaseURL, orderNum)
+
+	resp, err := c.Client.Get(url)
 	if err != nil {
-		return nil, fmt.Errorf("error reading response body: %v", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("accrual get error: %s", resp.Status)
 	}
 
-	var orderResp OrderResponse
-	if err := json.Unmarshal(respBody, &orderResp); err != nil {
-		return nil, fmt.Errorf("error unmarshalling response body: %v", err)
-	}
-
-	if resp.StatusCode == http.StatusOK {
-		fmt.Println("Order registered successfully")
-	} else if resp.StatusCode == http.StatusAccepted {
-		fmt.Println("Order accepted")
-	} else {
-		return nil, fmt.Errorf("error while processing order, status: %s, response: %s", resp.Status, string(respBody))
-	}
-
-	return &orderResp, nil
+	var res OrderResponse
+	return &res, json.NewDecoder(resp.Body).Decode(&res)
 }

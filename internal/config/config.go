@@ -33,7 +33,7 @@ func NewConfig() (*Config, error) {
 	}
 
 	// Проверяем, что все необходимые параметры заданы
-	if config.RunAddress == "" || config.DatabaseURI == "" || config.AccrualSystemAddress == "" {
+	if config.RunAddress == "" || config.DatabaseURI == "" {
 		return nil, fmt.Errorf("необходимо задать все параметры конфигурации: RUN_ADDRESS, DATABASE_URI, ACCRUAL_SYSTEM_ADDRESS")
 	}
 

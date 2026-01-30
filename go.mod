@@ -15,6 +15,7 @@ require (
 	github.com/go-resty/resty/v2 v2.17.1 // indirect
 	github.com/lib/pq v1.11.1 // indirect
 	github.com/stretchr/testify v1.11.1 // indirect
+	github.com/theplant/luhn v0.0.0-20170224032821-81a1a381387a // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/net v0.48.0 // indirect
 )

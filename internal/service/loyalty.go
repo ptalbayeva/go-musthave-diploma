@@ -3,7 +3,6 @@ package service
 import (
 	"context"
 	"errors"
-	"strconv"
 	"time"
 
 	"github.com/google/uuid"
@@ -107,25 +106,21 @@ func (s *LoyaltyService) WithdrawPoints(ctx context.Context, userID uuid.UUID, p
 	return s.loyaltyRepo.AddTransaction(ctx, userID, transaction.OrderID, transaction.Points, transaction.Type)
 }
 
-// Метод для проверки существования заказа в сервисе лояльности
-func (s *LoyaltyService) OrderExists(ctx context.Context, orderID string) (bool, error) {
+// OrderExists Метод для проверки существования заказа в сервисе лояльности
+func (s *LoyaltyService) OrderExists(ctx context.Context, orderID string) (bool, uuid.UUID, error) {
 	return s.orderRepo.OrderExists(ctx, orderID)
 }
 
-// Метод для создания нового заказа и начисления баллов
-func (s *LoyaltyService) CreateOrder(ctx context.Context, userID uuid.UUID, orderID string) (string, error) {
-	if !isValidOrderID(orderID) {
-		return "", errors.New("invalid order number")
-	}
+// CreateOrder Метод для создания нового заказа и начисления баллов
+func (s *LoyaltyService) CreateOrder(ctx context.Context, userID uuid.UUID, orderID string) error {
+	const status = "NEW"
 
-	orderStatus := "NEW"
-	_, err := s.orderRepo.CreateOrder(ctx, userID, orderID, orderStatus)
+	_, err := s.orderRepo.CreateOrder(ctx, userID, orderID, status)
 	if err != nil {
-		return "", err
+		return err
 	}
 
-	// Возвращаем статус
-	return "ORDER_CREATED", nil
+	return nil
 }
 
 // Метод для обновления статуса заказа
@@ -151,36 +146,4 @@ func (s *LoyaltyService) UpdateOrderStatus(ctx context.Context, orderID string, 
 
 	// Записываем транзакцию
 	return s.loyaltyRepo.AddTransaction(ctx, transaction.UserID, transaction.OrderID, transaction.Points, transaction.Type)
-}
-
-// Простая валидация для номера заказа
-func isValidOrderID(orderID string) bool {
-	orderID = orderID[:len(orderID)-1] + orderID[len(orderID)-1:]
-
-	if len(orderID) < 1 {
-		return false
-	}
-
-	reversed := ""
-	for i := len(orderID) - 1; i >= 0; i-- {
-		reversed += string(orderID[i])
-	}
-
-	sum := 0
-	for i, char := range reversed {
-		num, err := strconv.Atoi(string(char))
-		if err != nil {
-			return false
-		}
-
-		if i%2 != 0 {
-			num *= 2
-			if num > 9 {
-				num = num - 9
-			}
-		}
-		sum += num
-	}
-
-	return sum%10 == 0
 }
