@@ -58,14 +58,14 @@ func AwaitOrderProcessed(
 				_ = loyalty.UpdateOrderStatus(ctx, orderID, "INVALID")
 				return
 			case "PROCESSED":
-				points := 0
+				points := 0.0
 				if res.Accrual != nil {
-					points = int(*res.Accrual)
+					points = float64(float32(*res.Accrual))
 				}
 
 				_ = loyalty.UpdateOrderStatus(ctx, orderID, "PROCESSED")
 				if points > 0 {
-					_ = loyalty.AddPoints(ctx, userID, orderID, points)
+					_ = loyalty.AddPoints(ctx, userID, orderID, float32(points))
 				}
 				return
 			}

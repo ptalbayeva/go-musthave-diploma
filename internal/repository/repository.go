@@ -29,17 +29,17 @@ type UsersRepository interface {
 type OrdersRepository interface {
 	CreateOrder(ctx context.Context, userID uuid.UUID, orderID string, status string) (uuid.UUID, error)
 	GetOrdersByUserID(ctx context.Context, userID uuid.UUID) ([]models.Order, error)
-	UpdateOrderPoints(ctx context.Context, orderID string, points int) error
+	UpdateOrderPoints(ctx context.Context, orderID string, points float32) error
 	UpdateWithdrawalStatus(ctx context.Context, orderID string, status string) error
 	GetByOrderID(ctx context.Context, orderID string) (models.Order, error)
 	OrderExists(ctx context.Context, orderID string) (bool, uuid.UUID, error)
 }
 
 type LoyaltyRepository interface {
-	GetBalance(ctx context.Context, userID uuid.UUID) (int, error)
-	AddPoints(ctx context.Context, userID uuid.UUID, points int) error
-	SubtractPoints(ctx context.Context, userID uuid.UUID, points int) error
-	AddTransaction(ctx context.Context, userID uuid.UUID, orderID string, points int, transactionType string) error
+	GetBalance(ctx context.Context, userID uuid.UUID) (float32, error)
+	AddPoints(ctx context.Context, userID uuid.UUID, points float32) error
+	SubtractPoints(ctx context.Context, userID uuid.UUID, points float32) error
+	AddTransaction(ctx context.Context, userID uuid.UUID, orderID string, points float32, transactionType string) error
 	GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error)
-	GetWithdrawn(ctx context.Context, userID uuid.UUID) (int, error)
+	GetWithdrawn(ctx context.Context, userID uuid.UUID) (float32, error)
 }

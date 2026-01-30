@@ -11,7 +11,7 @@ type Order struct {
 	UserID            uuid.UUID `json:"user_id"`
 	OrderID           string    `json:"order_id"`
 	Status            string    `json:"status"`
-	PointsAccumulated int       `json:"points_accumulated"`
+	PointsAccumulated float32   `json:"points_accumulated"`
 	WithdrawalStatus  string    `json:"withdrawal_status"`
 	CreatedAt         time.Time `json:"created_at"`
 }

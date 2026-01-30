@@ -22,7 +22,7 @@ func (h *LoyaltyHandler) AddPoints(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		UserID  uuid.UUID `json:"user_id"`
 		OrderID string    `json:"order_id"`
-		Points  int       `json:"points"`
+		Points  float32   `json:"points"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {
@@ -44,7 +44,7 @@ func (h *LoyaltyHandler) AddPoints(w http.ResponseWriter, r *http.Request) {
 func (h *LoyaltyHandler) WithdrawPoints(w http.ResponseWriter, r *http.Request) {
 	var request struct {
 		UserID uuid.UUID `json:"user_id"`
-		Points int       `json:"points"`
+		Points float32   `json:"points"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {

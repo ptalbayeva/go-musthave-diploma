@@ -194,15 +194,15 @@ func (h *UserHandler) GetOrders(w http.ResponseWriter, r *http.Request) {
 	})
 
 	type response struct {
-		Number     string `json:"number"`
-		Status     string `json:"status"`
-		Accrual    *int   `json:"accrual,omitempty"`
-		UploadedAt string `json:"uploaded_at"`
+		Number     string   `json:"number"`
+		Status     string   `json:"status"`
+		Accrual    *float32 `json:"accrual,omitempty"`
+		UploadedAt string   `json:"uploaded_at"`
 	}
 
 	responses := make([]*response, 0, len(orders))
 	for _, order := range orders {
-		var accrual *int
+		var accrual *float32
 		if order.PointsAccumulated > 0 {
 			accrual = &order.PointsAccumulated
 		}
@@ -254,7 +254,7 @@ func (h *UserHandler) WithdrawPoints(w http.ResponseWriter, r *http.Request) {
 	}
 
 	var request struct {
-		Points int `json:"points"`
+		Points float32 `json:"points"`
 	}
 
 	if err := json.NewDecoder(r.Body).Decode(&request); err != nil {

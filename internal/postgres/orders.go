@@ -51,7 +51,7 @@ func (r *orderRepo) GetOrdersByUserID(ctx context.Context, userID uuid.UUID) ([]
 	return orders, nil
 }
 
-func (r *orderRepo) UpdateOrderPoints(ctx context.Context, orderID string, points int) error {
+func (r *orderRepo) UpdateOrderPoints(ctx context.Context, orderID string, points float32) error {
 	fmt.Println("orderId", orderID)
 	fmt.Println("points", points)
 	_, err := r.db.ExecContext(ctx, "UPDATE orders SET points_accumulated = $1 WHERE order_id = $2", points, orderID)

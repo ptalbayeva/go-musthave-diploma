@@ -22,7 +22,7 @@ func NewLoyaltyService(loyaltyRepo repository.LoyaltyRepository, orderRepo repos
 }
 
 // GetUserBalance Получить баланс пользователя
-func (s *LoyaltyService) GetUserBalance(ctx context.Context, userID uuid.UUID) (current int, withdrawn int, err error) {
+func (s *LoyaltyService) GetUserBalance(ctx context.Context, userID uuid.UUID) (current float32, withdrawn float32, err error) {
 	current, err = s.loyaltyRepo.GetBalance(ctx, userID)
 	if err != nil {
 		return
@@ -50,7 +50,7 @@ func (s *LoyaltyService) GetOrders(ctx context.Context, userID uuid.UUID) ([]mod
 }
 
 // Метод для добавления баллов за заказ
-func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderID string, points int) error {
+func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderID string, points float32) error {
 	// Проверяем, существует ли заказ
 	order, err := s.orderRepo.GetByOrderID(ctx, orderID)
 	if err != nil {
@@ -69,7 +69,7 @@ func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderI
 }
 
 // Метод для списания баллов
-func (s *LoyaltyService) WithdrawPoints(ctx context.Context, userID uuid.UUID, points int) error {
+func (s *LoyaltyService) WithdrawPoints(ctx context.Context, userID uuid.UUID, points float32) error {
 	// Получаем текущий баланс
 	balance, err := s.loyaltyRepo.GetBalance(ctx, userID)
 	if err != nil {

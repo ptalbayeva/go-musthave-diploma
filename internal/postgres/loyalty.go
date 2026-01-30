@@ -18,8 +18,8 @@ func NewLoyaltyRepository(db *sql.DB) repository.LoyaltyRepository {
 }
 
 // Получить баланс пользователя
-func (r *loyaltyRepo) GetBalance(ctx context.Context, userID uuid.UUID) (int, error) {
-	var balance int
+func (r *loyaltyRepo) GetBalance(ctx context.Context, userID uuid.UUID) (float32, error) {
+	var balance float32
 	err := r.db.QueryRowContext(ctx, "SELECT balance FROM loyalty_points WHERE user_id = $1", userID).Scan(&balance)
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -31,14 +31,14 @@ func (r *loyaltyRepo) GetBalance(ctx context.Context, userID uuid.UUID) (int, er
 }
 
 // Добавить баллы пользователю
-func (r *loyaltyRepo) AddPoints(ctx context.Context, userID uuid.UUID, points int) error {
+func (r *loyaltyRepo) AddPoints(ctx context.Context, userID uuid.UUID, points float32) error {
 	// Проверка, если записи нет — создаем её
 	_, err := r.db.ExecContext(ctx, "INSERT INTO loyalty_points (user_id, balance) VALUES ($1, $2) ON CONFLICT (user_id) DO UPDATE SET balance = loyalty_points.balance + $2", userID, points)
 	return err
 }
 
 // Вычесть баллы у пользователя
-func (r *loyaltyRepo) SubtractPoints(ctx context.Context, userID uuid.UUID, points int) error {
+func (r *loyaltyRepo) SubtractPoints(ctx context.Context, userID uuid.UUID, points float32) error {
 	// Проверка, если записи нет — ошибка
 	_, err := r.db.ExecContext(ctx, "UPDATE loyalty_points SET balance = balance - $1 WHERE user_id = $2 AND balance >= $1", points, userID)
 	if err != nil {
@@ -48,7 +48,7 @@ func (r *loyaltyRepo) SubtractPoints(ctx context.Context, userID uuid.UUID, poin
 }
 
 // Добавить транзакцию
-func (r *loyaltyRepo) AddTransaction(ctx context.Context, userID uuid.UUID, orderID string, points int, transactionType string) error {
+func (r *loyaltyRepo) AddTransaction(ctx context.Context, userID uuid.UUID, orderID string, points float32, transactionType string) error {
 	// Генерация уникального ID транзакции
 	transactionID := uuid.New()
 
@@ -61,8 +61,8 @@ func (r *loyaltyRepo) AddTransaction(ctx context.Context, userID uuid.UUID, orde
 	return err
 }
 
-func (r *loyaltyRepo) GetWithdrawn(ctx context.Context, userID uuid.UUID) (int, error) {
-	var withdrawn int
+func (r *loyaltyRepo) GetWithdrawn(ctx context.Context, userID uuid.UUID) (float32, error) {
+	var withdrawn float32
 	err := r.db.QueryRowContext(ctx, `SELECT COALESCE(SUM(points),0) FROM transactions WHERE user_id=$1`, userID).Scan(&withdrawn)
 	return withdrawn, err
 }
