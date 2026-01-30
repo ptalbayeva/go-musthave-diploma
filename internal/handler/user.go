@@ -4,10 +4,10 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/ptalbayeva/go-musthave-diploma/internal/client"
@@ -120,12 +120,16 @@ func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	body, err := io.ReadAll(r.Body)
-	if err != nil {
+	if err != nil || len(body) == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	order := string(body)
+	order := strings.TrimSpace(string(body))
 	orderID, err := strconv.Atoi(order)
+	if err != nil {
+		http.Error(w, "invalid order format", http.StatusBadRequest)
+		return
+	}
 
 	if !luhn.Valid(orderID) {
 		http.Error(w, "invalid order number", http.StatusUnprocessableEntity)
@@ -149,12 +153,6 @@ func (h *UserHandler) CreateOrder(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.loyaltyService.CreateOrder(ctx, userID, order); err != nil {
 		http.Error(w, "failed to create order", http.StatusInternalServerError)
-		return
-	}
-
-	if err := h.accrualClient.RegisterOrder(order); err != nil {
-		fmt.Println(err)
-		http.Error(w, "failed to register order in accrual", http.StatusInternalServerError)
 		return
 	}
 

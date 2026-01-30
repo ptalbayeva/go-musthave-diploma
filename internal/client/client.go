@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"strconv"
 	"time"
 )
 
@@ -27,43 +28,40 @@ func NewClient(baseURL string) *Client {
 	}
 }
 
-// RegisterOrder Регистрация заказа в accrual
-func (c *Client) RegisterOrder(orderNum string) error {
-	url := fmt.Sprintf("%s/api/orders/%s", c.BaseURL, orderNum)
-
-	req, err := http.NewRequest(http.MethodPost, url, nil)
-	if err != nil {
-		return err
-	}
-
-	resp, err := c.Client.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	switch resp.StatusCode {
-	case http.StatusOK, http.StatusAccepted, http.StatusConflict:
-		return nil
-	default:
-		return fmt.Errorf("accrual register error: %s", resp.Status)
-	}
-}
-
 // GetOrder Получение статуса заказа
-func (c *Client) GetOrder(orderNum string) (*OrderResponse, error) {
+func (c *Client) GetOrder(orderNum string) (*OrderResponse, int, int, error) {
 	url := fmt.Sprintf("%s/api/orders/%s", c.BaseURL, orderNum)
 
 	resp, err := c.Client.Get(url)
 	if err != nil {
-		return nil, err
+		return nil, 0, 0, err
 	}
 	defer resp.Body.Close()
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("accrual get error: %s", resp.Status)
-	}
+	switch resp.StatusCode {
+	case http.StatusOK:
+		var res OrderResponse
+		if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+			return nil, resp.StatusCode, 0, err
+		}
+		return &res, resp.StatusCode, 0, nil
 
-	var res OrderResponse
-	return &res, json.NewDecoder(resp.Body).Decode(&res)
+	case http.StatusNoContent:
+		return nil, resp.StatusCode, 0, nil
+
+	case http.StatusTooManyRequests:
+		retryAfter := 60
+		if ra := resp.Header.Get("Retry-After"); ra != "" {
+			if v, err := strconv.Atoi(ra); err == nil {
+				retryAfter = v
+			}
+		}
+		return nil, resp.StatusCode, retryAfter, nil
+
+	case http.StatusInternalServerError:
+		return nil, resp.StatusCode, 0, fmt.Errorf("server error: %s", resp.Status)
+
+	default:
+		return nil, resp.StatusCode, 0, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+	}
 }

@@ -2,6 +2,7 @@ package worker
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -16,7 +17,6 @@ func AwaitOrderProcessed(
 	accrual *client.Client,
 	loyalty *service.LoyaltyService,
 ) {
-
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
@@ -25,8 +25,29 @@ func AwaitOrderProcessed(
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			res, err := accrual.GetOrder(orderID)
+			res, statusCode, retryAfter, err := accrual.GetOrder(orderID)
+			fmt.Println(res)
 			if err != nil {
+				fmt.Println("Error fetching order:", err)
+				continue
+			}
+
+			switch statusCode {
+			case 204:
+				fmt.Println("Order not registered:", orderID)
+				return
+
+			case 429:
+				wait := 60 // по умолчанию 60 секунд
+				if retryAfter > 0 {
+					wait = retryAfter
+				}
+				fmt.Printf("Rate limit exceeded, waiting %d seconds\n", wait)
+				time.Sleep(time.Duration(wait) * time.Second)
+				continue
+
+			case 500:
+				fmt.Println("Server error for order:", orderID)
 				continue
 			}
 
@@ -40,12 +61,16 @@ func AwaitOrderProcessed(
 
 			case "PROCESSED":
 				if res.Accrual == nil {
+					_ = loyalty.UpdateOrderStatus(ctx, orderID, "PROCESSED")
 					return
 				}
 
 				_ = loyalty.UpdateOrderStatus(ctx, orderID, "PROCESSED")
 				_ = loyalty.AddPoints(ctx, userID, orderID, int(*res.Accrual))
 				return
+
+			case "REGISTERED":
+				continue
 			}
 		}
 	}
