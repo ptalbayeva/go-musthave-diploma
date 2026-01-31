@@ -24,7 +24,7 @@ func (m *mockLoyaltyRepo) AddPoints(ctx context.Context, userID uuid.UUID, point
 }
 
 func (m *mockLoyaltyRepo) SubtractPoints(ctx context.Context, userID uuid.UUID, points float32) error {
-	return m.SubtractPoints(ctx, userID, points)
+	return m.SubtractPointsFn(ctx, userID, points)
 }
 
 func (m *mockLoyaltyRepo) GetCurrent(ctx context.Context, userID uuid.UUID) (float32, error) {

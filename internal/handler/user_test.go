@@ -89,12 +89,15 @@ func TestUserHandler_Login_TableDriven(t *testing.T) {
 			require.Equal(t, tt.expectedStatus, rec.Code)
 
 			if tt.expectedStatus == http.StatusOK {
+				res := rec.Result()
+				defer res.Body.Close()
+
 				var resp map[string]string
-				err := json.NewDecoder(rec.Body).Decode(&resp)
+				err := json.NewDecoder(res.Body).Decode(&resp)
 				require.NoError(t, err)
 				require.Equal(t, tt.expectedToken, resp["token"])
 
-				cookies := rec.Result().Cookies()
+				cookies := res.Cookies()
 				require.Len(t, cookies, 1)
 				require.Equal(t, "auth_token", cookies[0].Name)
 			}
