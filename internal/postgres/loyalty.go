@@ -17,19 +17,6 @@ func NewLoyaltyRepository(db *sql.DB) repository.LoyaltyRepository {
 	return &loyaltyRepo{db: db}
 }
 
-// GetBalance Получить баланс пользователя
-func (r *loyaltyRepo) GetBalance(ctx context.Context, userID uuid.UUID) (float32, error) {
-	var balance float32
-	err := r.db.QueryRowContext(ctx, "SELECT balance FROM loyalty_points WHERE user_id = $1", userID).Scan(&balance)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			return 0, nil
-		}
-		return 0, err
-	}
-	return balance, nil
-}
-
 // Добавить баллы пользователю
 func (r *loyaltyRepo) AddPoints(ctx context.Context, userID uuid.UUID, points float32) error {
 	// Проверка, если записи нет — создаем её

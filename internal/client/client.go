@@ -8,19 +8,23 @@ import (
 	"time"
 )
 
+type Client interface {
+	GetOrder(orderNum string) (*OrderResponse, int, int, error)
+}
+
 type OrderResponse struct {
 	Order   string   `json:"order"`
 	Status  string   `json:"status"`
 	Accrual *float64 `json:"accrual,omitempty"`
 }
 
-type Client struct {
+type client struct {
 	BaseURL string
 	Client  *http.Client
 }
 
-func NewClient(baseURL string) *Client {
-	return &Client{
+func NewClient(baseURL string) *client {
+	return &client{
 		BaseURL: baseURL,
 		Client: &http.Client{
 			Timeout: 5 * time.Second,
@@ -29,7 +33,7 @@ func NewClient(baseURL string) *Client {
 }
 
 // GetOrder Получение статуса заказа
-func (c *Client) GetOrder(orderNum string) (*OrderResponse, int, int, error) {
+func (c *client) GetOrder(orderNum string) (*OrderResponse, int, int, error) {
 	url := fmt.Sprintf("%s/api/orders/%s", c.BaseURL, orderNum)
 
 	resp, err := c.Client.Get(url)

@@ -23,16 +23,20 @@ import (
 func main() {
 	config, err := config.NewConfig()
 	if err != nil {
-		log.Fatal("Ошибка конфигурации:", err)
+		log.Fatal("error loading config:", err)
+	}
+
+	if err := middleware.Initialize(config.LogLevel); err != nil {
+		log.Printf("error initializing logger: %v", err)
 	}
 
 	db, err := connectToDatabase(config.DatabaseURI)
 	if err != nil {
-		log.Fatal("Ошибка подключения к базе данных:", err)
+		log.Fatal("error connecting to db", err)
 	}
 
 	if err := runMigrations(db); err != nil {
-		log.Fatal("Ошибка выполнения миграций:", err)
+		log.Fatal("error while running migrations:", err)
 	}
 
 	repos := &repository.Repositories{
@@ -49,6 +53,7 @@ func main() {
 	userHandler := handler.NewUserHandler(authService, loyaltyService, config.SecretKey, accrualClient)
 
 	r := chi.NewRouter()
+	r.Use(middleware.RequestLogger())
 
 	r.Post("/api/user/register", userHandler.Register)
 	r.Post("/api/user/login", userHandler.Login)
@@ -62,9 +67,9 @@ func main() {
 		r.Get("/api/user/withdrawals", userHandler.GetWithdrawals)
 	})
 
-	fmt.Println("Сервер запущен на", config.RunAddress)
+	fmt.Println("Sever started", config.RunAddress)
 	if fail := http.ListenAndServe(config.RunAddress, r); fail != nil {
-		log.Fatal("Ошибка запуска сервера:", fail)
+		log.Fatal("error while starting server:", fail)
 	}
 }
 

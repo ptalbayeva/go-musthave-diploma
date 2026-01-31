@@ -21,14 +21,14 @@ import (
 )
 
 type UserHandler struct {
-	authService    *service.AuthService
-	loyaltyService *service.LoyaltyService
+	authService    service.AuthService
+	loyaltyService service.LoyaltyService
 	secretKey      string
 	authMiddleware *middleware.AuthMiddleware
-	accrualClient  *client.Client
+	accrualClient  client.Client
 }
 
-func NewUserHandler(authService *service.AuthService, loyaltyService *service.LoyaltyService, secretKey string, accrualClient *client.Client) *UserHandler {
+func NewUserHandler(authService service.AuthService, loyaltyService service.LoyaltyService, secretKey string, accrualClient client.Client) *UserHandler {
 	authMiddleware := middleware.NewAuthMiddleware(secretKey)
 	return &UserHandler{
 		authService:    authService,

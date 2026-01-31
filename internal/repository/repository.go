@@ -9,10 +9,7 @@ import (
 )
 
 var (
-	ErrOrderExistsUser  = errors.New("order already exists for this user")
-	ErrOrderExistsOther = errors.New("order already exists for another user")
-	ErrNotFound         = errors.New("order not found")
-	ErrConflict         = errors.New("login already exists")
+	ErrConflict = errors.New("login already exists")
 )
 
 type Repositories struct {
@@ -36,7 +33,6 @@ type OrdersRepository interface {
 }
 
 type LoyaltyRepository interface {
-	GetBalance(ctx context.Context, userID uuid.UUID) (float32, error)
 	AddPoints(ctx context.Context, userID uuid.UUID, points float32) error
 	SubtractPoints(ctx context.Context, userID uuid.UUID, points float32) error
 	AddTransaction(ctx context.Context, userID uuid.UUID, orderID string, points float32, transactionType string) error

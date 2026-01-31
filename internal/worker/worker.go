@@ -14,8 +14,8 @@ func AwaitOrderProcessed(
 	ctx context.Context,
 	orderID string,
 	userID uuid.UUID,
-	accrual *client.Client,
-	loyalty *service.LoyaltyService,
+	accrual client.Client,
+	loyalty service.LoyaltyService,
 ) {
 	ticker := time.NewTicker(1 * time.Second) // чаще опрашиваем
 	defer ticker.Stop()

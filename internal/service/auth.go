@@ -11,19 +11,24 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-type AuthService struct {
+type AuthService interface {
+	RegisterUser(ctx context.Context, email, password string) (uuid.UUID, error)
+	AuthenticateUser(ctx context.Context, email, password string) (string, error)
+}
+
+type authService struct {
 	usersRepo repository.UsersRepository
 	SecretKey string
 }
 
-func NewAuthService(usersRepo repository.UsersRepository, secretKey string) *AuthService {
-	return &AuthService{
+func NewAuthService(usersRepo repository.UsersRepository, secretKey string) *authService {
+	return &authService{
 		usersRepo: usersRepo,
 		SecretKey: secretKey,
 	}
 }
 
-func (s *AuthService) RegisterUser(ctx context.Context, email, password string) (uuid.UUID, error) {
+func (s *authService) RegisterUser(ctx context.Context, email, password string) (uuid.UUID, error) {
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
 		return uuid.Nil, err
@@ -40,7 +45,7 @@ func (s *AuthService) RegisterUser(ctx context.Context, email, password string) 
 	return userID, nil
 }
 
-func (s *AuthService) AuthenticateUser(ctx context.Context, email, password string) (string, error) {
+func (s *authService) AuthenticateUser(ctx context.Context, email, password string) (string, error) {
 	user, err := s.usersRepo.GetByEmail(ctx, email)
 	if err != nil {
 		return "", errors.New("user not found")
@@ -59,7 +64,7 @@ func (s *AuthService) AuthenticateUser(ctx context.Context, email, password stri
 	return token, nil
 }
 
-func (s *AuthService) generateToken(userID uuid.UUID) (string, error) {
+func (s *authService) generateToken(userID uuid.UUID) (string, error) {
 	claims := jwt.MapClaims{
 		"user_id": userID.String(),
 		"exp":     time.Now().Add(time.Hour * 24).Unix(),

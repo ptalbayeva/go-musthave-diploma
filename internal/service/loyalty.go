@@ -15,18 +15,30 @@ var (
 )
 
 // LoyaltyService Логика для работы с лояльностью
-type LoyaltyService struct {
+type LoyaltyService interface {
+	AddPoints(ctx context.Context, userID uuid.UUID, orderID string, points float32) error
+	UpdateOrderStatus(ctx context.Context, orderID string, status string) error
+	CreateOrder(ctx context.Context, userID uuid.UUID, orderID string) error
+	OrderExists(ctx context.Context, orderID string) (bool, uuid.UUID, error)
+	GetOrders(ctx context.Context, userID uuid.UUID) ([]models.Order, error)
+	GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error)
+	GetUserBalance(ctx context.Context, userID uuid.UUID) (current float32, withdrawn float32, err error)
+	WithdrawPoints(ctx context.Context, userID uuid.UUID, orderID string, points float32) error
+}
+
+// loyaltyService Логика для работы с лояльностью
+type loyaltyService struct {
 	loyaltyRepo repository.LoyaltyRepository
 	orderRepo   repository.OrdersRepository
 }
 
 // NewLoyaltyService Конструктор для сервиса лояльности
-func NewLoyaltyService(loyaltyRepo repository.LoyaltyRepository, orderRepo repository.OrdersRepository) *LoyaltyService {
-	return &LoyaltyService{loyaltyRepo: loyaltyRepo, orderRepo: orderRepo}
+func NewLoyaltyService(loyaltyRepo repository.LoyaltyRepository, orderRepo repository.OrdersRepository) *loyaltyService {
+	return &loyaltyService{loyaltyRepo: loyaltyRepo, orderRepo: orderRepo}
 }
 
 // GetUserBalance Получить баланс пользователя
-func (s *LoyaltyService) GetUserBalance(ctx context.Context, userID uuid.UUID) (current float32, withdrawn float32, err error) {
+func (s *loyaltyService) GetUserBalance(ctx context.Context, userID uuid.UUID) (current float32, withdrawn float32, err error) {
 	current, err = s.loyaltyRepo.GetCurrent(ctx, userID)
 	if err != nil {
 		return
@@ -36,7 +48,7 @@ func (s *LoyaltyService) GetUserBalance(ctx context.Context, userID uuid.UUID) (
 }
 
 // GetWithdrawals Получить историю выводов средств
-func (s *LoyaltyService) GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error) {
+func (s *loyaltyService) GetWithdrawals(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error) {
 	withdrawals, err := s.loyaltyRepo.GetWithdrawals(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -45,7 +57,7 @@ func (s *LoyaltyService) GetWithdrawals(ctx context.Context, userID uuid.UUID) (
 }
 
 // GetOrders Получить все заказы пользователя
-func (s *LoyaltyService) GetOrders(ctx context.Context, userID uuid.UUID) ([]models.Order, error) {
+func (s *loyaltyService) GetOrders(ctx context.Context, userID uuid.UUID) ([]models.Order, error) {
 	orders, err := s.orderRepo.GetOrdersByUserID(ctx, userID)
 	if err != nil {
 		return nil, err
@@ -54,7 +66,7 @@ func (s *LoyaltyService) GetOrders(ctx context.Context, userID uuid.UUID) ([]mod
 }
 
 // AddPoints Метод для добавления баллов за заказ
-func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderID string, points float32) error {
+func (s *loyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderID string, points float32) error {
 	// Проверяем, существует ли заказ
 	order, err := s.orderRepo.GetByOrderID(ctx, orderID)
 	if err != nil {
@@ -69,7 +81,7 @@ func (s *LoyaltyService) AddPoints(ctx context.Context, userID uuid.UUID, orderI
 }
 
 // WithdrawPoints Метод для списания баллов
-func (s *LoyaltyService) WithdrawPoints(
+func (s *loyaltyService) WithdrawPoints(
 	ctx context.Context,
 	userID uuid.UUID,
 	orderID string,
@@ -95,12 +107,12 @@ func (s *LoyaltyService) WithdrawPoints(
 }
 
 // OrderExists Метод для проверки существования заказа в сервисе лояльности
-func (s *LoyaltyService) OrderExists(ctx context.Context, orderID string) (bool, uuid.UUID, error) {
+func (s *loyaltyService) OrderExists(ctx context.Context, orderID string) (bool, uuid.UUID, error) {
 	return s.orderRepo.OrderExists(ctx, orderID)
 }
 
 // CreateOrder Метод для создания нового заказа и начисления баллов
-func (s *LoyaltyService) CreateOrder(ctx context.Context, userID uuid.UUID, orderID string) error {
+func (s *loyaltyService) CreateOrder(ctx context.Context, userID uuid.UUID, orderID string) error {
 	const status = "NEW"
 
 	_, err := s.orderRepo.CreateOrder(ctx, userID, orderID, status)
@@ -112,7 +124,7 @@ func (s *LoyaltyService) CreateOrder(ctx context.Context, userID uuid.UUID, orde
 }
 
 // UpdateOrderStatus Метод для обновления статуса заказа
-func (s *LoyaltyService) UpdateOrderStatus(ctx context.Context, orderID string, status string) error {
+func (s *loyaltyService) UpdateOrderStatus(ctx context.Context, orderID string, status string) error {
 	// Обновляем статус заказа
 	if err := s.orderRepo.UpdateWithdrawalStatus(ctx, orderID, status); err != nil {
 		return err

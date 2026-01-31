@@ -71,14 +71,16 @@ func RequestLogger() func(http.Handler) http.Handler {
 	}
 }
 
-func (r loggerResponseWriter) Write(b []byte) (int, error) {
-	size, err := r.ResponseWriter.Write(b)
-	r.responseData.size += size
-
-	return size, err
-}
-
 func (r loggerResponseWriter) WriteHeader(statusCode int) {
 	r.ResponseWriter.WriteHeader(statusCode)
 	r.responseData.status = statusCode
+}
+
+func (r loggerResponseWriter) Write(b []byte) (int, error) {
+	if r.responseData.status == 0 {
+		r.responseData.status = http.StatusOK
+	}
+	size, err := r.ResponseWriter.Write(b)
+	r.responseData.size += size
+	return size, err
 }

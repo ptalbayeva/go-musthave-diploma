@@ -11,11 +11,12 @@ import (
 	"database/sql"
 )
 
-// Реализация UsersRepository
+// usersRepo Реализация UsersRepository
 type usersRepo struct {
 	db *sql.DB
 }
 
+// NewUsersRepository создание репозитория
 func NewUsersRepository(db *sql.DB) repository.UsersRepository {
 	return &usersRepo{db: db}
 }

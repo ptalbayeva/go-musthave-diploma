@@ -11,6 +11,7 @@ type Config struct {
 	DatabaseURI          string
 	AccrualSystemAddress string
 	SecretKey            string
+	LogLevel             string
 }
 
 func NewConfig() (*Config, error) {
@@ -19,6 +20,7 @@ func NewConfig() (*Config, error) {
 		databaseURI          = flag.String("d", "postgres://my_superuser:strongpassword@localhost:5432/gophermart?sslmode=disable", "Адрес подключения к базе данных")
 		accrualSystemAddress = flag.String("r", "http://localhost:8081", "Адрес системы расчёта начислений")
 		secretKey            = flag.String("s", "secretkey", "Secret key")
+		logLevel             = flag.String("l", "INFO", "Log level")
 	)
 
 	// Разбираем флаги командной строки
@@ -30,6 +32,7 @@ func NewConfig() (*Config, error) {
 		DatabaseURI:          getEnv("DATABASE_URI", *databaseURI),
 		AccrualSystemAddress: getEnv("ACCRUAL_SYSTEM_ADDRESS", *accrualSystemAddress),
 		SecretKey:            getEnv("SECRET_KEY", *secretKey),
+		LogLevel:             getEnv("LOG_LEVEL", *logLevel),
 	}
 
 	// Проверяем, что все необходимые параметры заданы
