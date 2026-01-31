@@ -15,12 +15,12 @@ type mockLoyaltyRepo struct {
 	GetWithdrawnFn   func(ctx context.Context, userID uuid.UUID) (float32, error)
 	GetWithdrawalsFn func(ctx context.Context, userID uuid.UUID) ([]models.Transaction, error)
 	AddTransactionFn func(ctx context.Context, userID uuid.UUID, orderID string, points float32, t string) error
-	AddPointsFn      func(ctx context.Context, userID uuid.UUID, points float32)
+	AddPointsFn      func(ctx context.Context, userID uuid.UUID, points float32) error
 	SubtractPointsFn func(ctx context.Context, userID uuid.UUID, points float32) error
 }
 
 func (m *mockLoyaltyRepo) AddPoints(ctx context.Context, userID uuid.UUID, points float32) error {
-	return m.AddPoints(ctx, userID, points)
+	return m.AddPointsFn(ctx, userID, points)
 }
 
 func (m *mockLoyaltyRepo) SubtractPoints(ctx context.Context, userID uuid.UUID, points float32) error {
