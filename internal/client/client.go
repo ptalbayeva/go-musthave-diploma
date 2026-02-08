@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path"
 	"strconv"
 	"time"
 )
@@ -34,7 +35,7 @@ func NewClient(baseURL string) *client {
 
 // GetOrder Получение статуса заказа
 func (c *client) GetOrder(orderNum string) (*OrderResponse, int, int, error) {
-	url := fmt.Sprintf("%s/api/orders/%s", c.BaseURL, orderNum)
+	url := path.Join(c.BaseURL, "/api/orders/", orderNum)
 
 	resp, err := c.Client.Get(url)
 	if err != nil {

@@ -7,3 +7,7 @@ CREATE TABLE orders (
     withdrawal_status VARCHAR(50) DEFAULT 'PENDING',
     created_at TIMESTAMP DEFAULT NOW()
 );
+
+CREATE INDEX idx_user_id_order_id ON orders (user_id, order_id);
+CREATE INDEX idx_user_id_order_id_status ON orders (user_id, order_id, status);
+CREATE INDEX idx_user_id_withdrawal_status ON orders (user_id, withdrawal_status);

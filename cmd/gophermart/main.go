@@ -39,34 +39,7 @@ func main() {
 		log.Fatal("error while running migrations:", err)
 	}
 
-	repos := &repository.Repositories{
-		Users:   postgres.NewUsersRepository(db),
-		Orders:  postgres.NewOrderRepository(db),
-		Loyalty: postgres.NewLoyaltyRepository(db),
-	}
-
-	authService := service.NewAuthService(repos.Users, config.SecretKey)
-	loyaltyService := service.NewLoyaltyService(repos.Loyalty, repos.Orders)
-	authMiddleware := middleware.NewAuthMiddleware(config.SecretKey)
-
-	accrualClient := client.NewClient(config.AccrualSystemAddress)
-	userHandler := handler.NewUserHandler(authService, loyaltyService, config.SecretKey, accrualClient)
-
-	r := chi.NewRouter()
-	r.Use(middleware.RequestLogger())
-
-	r.Post("/api/user/register", userHandler.Register)
-	r.Post("/api/user/login", userHandler.Login)
-	r.Group(func(r chi.Router) {
-		r.Use(authMiddleware.Authorize)
-
-		r.Post("/api/user/orders", userHandler.CreateOrder)
-		r.Get("/api/user/orders", userHandler.GetOrders)
-		r.Get("/api/user/balance", userHandler.GetBalance)
-		r.Post("/api/user/balance/withdraw", userHandler.WithdrawPoints)
-		r.Get("/api/user/withdrawals", userHandler.GetWithdrawals)
-	})
-
+	r := initRoutes(db, config.SecretKey, config.AccrualSystemAddress)
 	fmt.Println("Sever started", config.RunAddress)
 	if fail := http.ListenAndServe(config.RunAddress, r); fail != nil {
 		log.Fatal("error while starting server:", fail)
@@ -109,4 +82,36 @@ func runMigrations(db *sql.DB) error {
 	}
 
 	return nil
+}
+
+func initRoutes(db *sql.DB, secretKey string, accrualSystemAddress string) *chi.Mux {
+	repos := &repository.Repositories{
+		Users:   postgres.NewUsersRepository(db),
+		Orders:  postgres.NewOrderRepository(db),
+		Loyalty: postgres.NewLoyaltyRepository(db),
+	}
+
+	authService := service.NewAuthService(repos.Users, secretKey)
+	loyaltyService := service.NewLoyaltyService(repos.Loyalty, repos.Orders)
+	authMiddleware := middleware.NewAuthMiddleware(secretKey)
+
+	accrualClient := client.NewClient(accrualSystemAddress)
+	userHandler := handler.NewUserHandler(authService, loyaltyService, secretKey, accrualClient)
+
+	r := chi.NewRouter()
+	r.Use(middleware.RequestLogger())
+
+	r.Post("/api/user/register", userHandler.Register)
+	r.Post("/api/user/login", userHandler.Login)
+	r.Group(func(r chi.Router) {
+		r.Use(authMiddleware.Authorize)
+
+		r.Post("/api/user/orders", userHandler.CreateOrder)
+		r.Get("/api/user/orders", userHandler.GetOrders)
+		r.Get("/api/user/balance", userHandler.GetBalance)
+		r.Post("/api/user/balance/withdraw", userHandler.WithdrawPoints)
+		r.Get("/api/user/withdrawals", userHandler.GetWithdrawals)
+	})
+
+	return r
 }
